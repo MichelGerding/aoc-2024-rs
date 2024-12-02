@@ -2,10 +2,11 @@ advent_of_code::solution!(1);
 
 pub fn part_one(input: &str) -> Option<u32> {
     const SIZE: usize = 1000;
+    const NUM_SIZE: usize = 4;
+
     let mut left = [0i32; SIZE];
     let mut right = [0i32; SIZE];
 
-    const NUM_SIZE: usize = 4;
     unsafe {
         let bytes = input.as_bytes();
         let mut i = 0;
@@ -33,17 +34,15 @@ pub fn part_one(input: &str) -> Option<u32> {
         right.sort_unstable();
     }
 
-    let x = left.iter()
+    Some(left.iter()
             .zip(right.iter())
             .map(|(l, r)| (*l - *r).abs() as u32)
-            .sum::<u32>();
-
-    return Some(x as u32);
+            .sum::<u32>())
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
     const SIZE: usize = 999;
-    const MAX_NUM: usize = 99999 + 1;
+    const MAX_NUM: usize = 100000;
     const NUM_SIZE: usize = 4;
 
     let mut left = [0usize; SIZE];
