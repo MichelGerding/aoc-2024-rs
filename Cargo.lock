@@ -24,6 +24,7 @@ dependencies = [
  "chrono",
  "dhat",
  "fancy-regex",
+ "lazy_static",
  "pico-args",
  "tinyjson",
 ]
