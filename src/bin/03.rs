@@ -1,4 +1,4 @@
-use fancy_regex::{Regex};
+use fancy_regex::Regex;
 use lazy_static::lazy_static;
 
 advent_of_code::solution!(3);
@@ -59,7 +59,6 @@ pub fn multsum_captures(bytes: &[u8]) -> u32 {
 pub fn part_one(input: &str) -> Option<u32> {
     Some(multsum_captures(input.as_bytes()))
 }
-
 
 pub fn part_two(input: &str) -> Option<u32> {
     let mut sum = 0;

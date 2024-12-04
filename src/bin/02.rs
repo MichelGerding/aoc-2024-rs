@@ -2,7 +2,7 @@
 advent_of_code::solution!(2);
 
 fn get_num(bytes: &[u8], idx: &mut usize) -> u32 {
-    let mut c =  0;
+    let mut c = 0;
     while idx < &mut bytes.len() && !bytes[*idx].is_ascii_whitespace() {
         c = c * 10 + (bytes[*idx] - b'0') as u32;
         *idx += 1;
@@ -13,7 +13,6 @@ fn get_num(bytes: &[u8], idx: &mut usize) -> u32 {
     c
 }
 
-
 pub fn part_one(input: &str) -> Option<u32> {
     Some(
         input
@@ -22,18 +21,17 @@ pub fn part_one(input: &str) -> Option<u32> {
                 let mut increasing = false;
                 let mut decreasing = false;
 
-
                 let bytes = line.as_bytes();
                 // pars the first number
                 let mut i = 0;
                 let mut prev = get_num(bytes, &mut i);
 
                 while i < bytes.len() {
-                    let c = get_num(bytes,&mut i);
+                    let c = get_num(bytes, &mut i);
 
                     let diff = c.abs_diff(prev);
                     if !(1..=3).contains(&diff) {
-                        return false
+                        return false;
                     }
 
                     if c < prev {
@@ -51,31 +49,36 @@ pub fn part_one(input: &str) -> Option<u32> {
 
                 true
             })
-            .count() as u32
+            .count() as u32,
     )
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    Some(input
-        .lines()
-        .map(|line| {
-            line.split_whitespace()
-                .into_iter()
-                .map(|c| c.parse::<u8>().unwrap())
-                .collect::<Vec<u8>>()
-        })
-        .filter(|levels| {
-            if save_levels(levels) {
-                return true;
-            }
+    Some(
+        input
+            .lines()
+            .map(|line| {
+                line.split_whitespace()
+                    .into_iter()
+                    .map(|c| c.parse::<u8>().unwrap())
+                    .collect::<Vec<u8>>()
+            })
+            .filter(|levels| {
+                if save_levels(levels) {
+                    return true;
+                }
 
-            (0..levels.len()).find(|i| {
-                let mut adjusted_level = levels.clone();
-                adjusted_level.remove(*i);
+                (0..levels.len())
+                    .find(|i| {
+                        let mut adjusted_level = levels.clone();
+                        adjusted_level.remove(*i);
 
-                save_levels(&adjusted_level)
-            }).is_some()
-        }).count() as u32)
+                        save_levels(&adjusted_level)
+                    })
+                    .is_some()
+            })
+            .count() as u32,
+    )
 }
 
 fn save_levels(levels: &Vec<u8>) -> bool {

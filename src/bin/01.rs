@@ -34,10 +34,12 @@ pub fn part_one(input: &str) -> Option<u32> {
         right.sort_unstable();
     }
 
-    Some(left.iter()
+    Some(
+        left.iter()
             .zip(right.iter())
             .map(|(l, r)| (*l - *r).abs() as u32)
-            .sum::<u32>())
+            .sum::<u32>(),
+    )
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
@@ -68,7 +70,6 @@ pub fn part_two(input: &str) -> Option<u32> {
             // Add to vectors and HashMap
             *left.get_unchecked_mut(idx) = l;
             *right.get_unchecked_mut(r as usize) += r;
-
 
             // Advance to next row
             i += 4 + NUM_SIZE + NUM_SIZE + 2;
