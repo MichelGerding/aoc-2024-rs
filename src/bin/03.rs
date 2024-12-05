@@ -2,7 +2,6 @@
 
 advent_of_code::solution!(3);
 
-
 pub fn multsum_captures(bytes: &[u8]) -> u32 {
     let mut sum = 0;
 

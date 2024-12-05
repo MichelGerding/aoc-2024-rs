@@ -14,7 +14,6 @@ const RULES_COUNT: usize = 21;
 
 const MAX_VALUE: usize = 99;
 
-
 pub fn part_one(input: &str) -> Option<u32> {
     let (order_rules, updates) = parse_input(input);
 
@@ -28,10 +27,10 @@ pub fn part_one(input: &str) -> Option<u32> {
 
                 let center = update.len() / 2;
                 Some(update[center] as u32)
-            }).sum()
+            })
+            .sum(),
     )
 }
-
 
 pub fn part_two(input: &str) -> Option<u32> {
     let (order_rules, mut updates) = parse_input(input);
@@ -59,7 +58,9 @@ pub fn part_two(input: &str) -> Option<u32> {
                     let center = pages.len() / 2;
                     Some(*pages.get_unchecked_mut(center) as u32)
                 }
-            }).sum())
+            })
+            .sum(),
+    )
 }
 
 fn parse_input(input: &str) -> ([(usize, usize); RULES_COUNT], [Vec<usize>; PAGES_COUNT]) {
@@ -72,8 +73,10 @@ fn parse_input(input: &str) -> ([(usize, usize); RULES_COUNT], [Vec<usize>; PAGE
         let mut i = 0;
         for idx in 0..RULES_COUNT {
             // Direct fast byte to number conversion
-            let a = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i + 1) - b'0')) as usize;
-            let b = ((bytes.get_unchecked(i + 3) - b'0') * 10 + (bytes.get_unchecked(i + 4) - b'0')) as usize;
+            let a = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i + 1) - b'0'))
+                as usize;
+            let b = ((bytes.get_unchecked(i + 3) - b'0') * 10 + (bytes.get_unchecked(i + 4) - b'0'))
+                as usize;
 
             *rules.get_unchecked_mut(idx) = (a, b);
             i += 6;
@@ -85,7 +88,8 @@ fn parse_input(input: &str) -> ([(usize, usize); RULES_COUNT], [Vec<usize>; PAGE
             let page_vec = pages.get_unchecked_mut(idx);
 
             loop {
-                let b = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i + 1) - b'0')) as usize;
+                let b = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i + 1) - b'0'))
+                    as usize;
                 page_vec.push(b);
                 i += 3;
                 if *bytes.get_unchecked(i - 1) == b'\n' {
@@ -108,10 +112,14 @@ fn rules_correct(order_rules: &[(usize, usize)], page_numbers: &[usize]) -> bool
 
         order_rules.iter().all(|(a, b)| {
             let a: usize = *p_cache.get_unchecked(*a);
-            if a == 0 { return true; }
+            if a == 0 {
+                return true;
+            }
 
             let b: usize = *p_cache.get_unchecked(*b);
-            if b == 0 { return true; }
+            if b == 0 {
+                return true;
+            }
 
             return a < b;
         })
@@ -127,14 +135,22 @@ fn applying_rules(order_rules: &[(usize, usize)], page_numbers: &[usize]) -> Vec
         }
 
         // check if the rules apply. a value of 0 indicates it isn't in page_numbers
-        order_rules.iter().filter(|(a, b)| {
-            let a: usize = *p_cache.get_unchecked(*a);
-            if a == 0 { return false; }
+        order_rules
+            .iter()
+            .filter(|(a, b)| {
+                let a: usize = *p_cache.get_unchecked(*a);
+                if a == 0 {
+                    return false;
+                }
 
-            let b: usize = *p_cache.get_unchecked(*b);
-            if b == 0 { return false; }
-            return true;
-        }).map(|a| *a).collect::<Vec<_>>()
+                let b: usize = *p_cache.get_unchecked(*b);
+                if b == 0 {
+                    return false;
+                }
+                return true;
+            })
+            .map(|a| *a)
+            .collect::<Vec<_>>()
     }
 }
 
@@ -149,7 +165,11 @@ unsafe fn resolve_page_order(rules: &[(usize, usize)]) -> [isize; MAX_VALUE + 1]
     }
 
     // Queue of nodes with zero indegree
-    let mut queue: Vec<usize> = indegree.iter().enumerate().filter_map(|(node, &deg)| if deg == 0 { Some(node) } else { None }).collect();
+    let mut queue: Vec<usize> = indegree
+        .iter()
+        .enumerate()
+        .filter_map(|(node, &deg)| if deg == 0 { Some(node) } else { None })
+        .collect();
 
     let mut result = [-1; MAX_VALUE + 1];
 

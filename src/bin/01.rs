@@ -9,7 +9,6 @@ const NUM_SIZE: usize = 5;
 #[cfg(not(debug_assertions))]
 const ASCII_CONVERSION_FACTOR: usize = 533328; // 48 * 11_111: 48 * ('1'*(NUMSIZE+1))
 
-
 #[cfg(debug_assertions)]
 const SIZE: usize = 6;
 #[cfg(debug_assertions)]
@@ -19,7 +18,6 @@ const ASCII_CONVERSION_FACTOR: usize = 48; // 48 * 1: 48 * ('1'*(NUMSIZE+1))
 
 const OFFSET_NEXT_NUM: usize = NUM_SIZE + 3;
 const MAX_NUM: usize = 100000;
-
 
 pub fn part_one(input: &str) -> Option<u32> {
     let mut left = [0i32; SIZE];
@@ -53,8 +51,7 @@ pub fn part_one(input: &str) -> Option<u32> {
     }
 
     Some(
-        left
-            .iter()
+        left.iter()
             .zip(right.iter())
             .map(|(l, r)| (*l - *r).abs())
             .sum::<i32>() as u32,
@@ -76,14 +73,12 @@ pub fn part_two(input: &str) -> Option<u32> {
             }
             l -= ASCII_CONVERSION_FACTOR;
 
-
             // Parse second number
             let mut r = 0;
             for c in bytes.get_unchecked(i + OFFSET_NEXT_NUM..i + OFFSET_NEXT_NUM + NUM_SIZE) {
                 r = r * 10 + *c as usize;
             }
             r -= ASCII_CONVERSION_FACTOR; // 533328
-
 
             // Add to vectors and HashMap
             *left.get_unchecked_mut(idx) = l;
@@ -93,12 +88,7 @@ pub fn part_two(input: &str) -> Option<u32> {
             i += OFFSET_NEXT_NUM + NUM_SIZE + 1;
         }
 
-        Some(
-            left
-                .iter()
-                .map(|v| *right.get_unchecked(*v))
-                .sum::<usize>() as u32
-        )
+        Some(left.iter().map(|v| *right.get_unchecked(*v)).sum::<usize>() as u32)
     }
 }
 

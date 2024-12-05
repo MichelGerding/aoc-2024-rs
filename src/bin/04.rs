@@ -26,7 +26,13 @@ fn convert_input_to_cells(input: &str) -> [u8; UGRID_SIZE * UGRID_SIZE] {
     }
 }
 
-fn get_chars_at_offsets(x: i32, y: i32, offsets: &[(i32, i32)], cells: &[u8; UGRID_SIZE * UGRID_SIZE], chars: &mut [u8]) {
+fn get_chars_at_offsets(
+    x: i32,
+    y: i32,
+    offsets: &[(i32, i32)],
+    cells: &[u8; UGRID_SIZE * UGRID_SIZE],
+    chars: &mut [u8],
+) {
     unsafe {
         offsets.iter().enumerate().for_each(|(j, &(dx, dy))| {
             let xo = x + dx;
@@ -69,25 +75,26 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(xmasses as u32)
 }
 
-
 pub fn part_two(input: &str) -> Option<u32> {
     let cells = convert_input_to_cells(input);
 
-    const OFFSETS_GROUPS: [[(i32, i32); 3]; 2] = [
-        [(-1, 1), (0, 0), (1, -1)],
-        [(1, 1), (0, 0), (-1, -1)]
-    ];
+    const OFFSETS_GROUPS: [[(i32, i32); 3]; 2] =
+        [[(-1, 1), (0, 0), (1, -1)], [(1, 1), (0, 0), (-1, -1)]];
 
     let mut xmasses = 0;
     for x in 0..GRID_SIZE {
         for y in 0..GRID_SIZE {
-            if OFFSETS_GROUPS.iter().filter(|offsets| {
-                let mut chars = [0u8; 3];
-                get_chars_at_offsets(x, y, *offsets, &cells, &mut chars);
+            if OFFSETS_GROUPS
+                .iter()
+                .filter(|offsets| {
+                    let mut chars = [0u8; 3];
+                    get_chars_at_offsets(x, y, *offsets, &cells, &mut chars);
 
-                chars == [b'M', b'A', b'S'] || chars == [b'S', b'A', b'M']
-
-            }).count() == 2 {
+                    chars == [b'M', b'A', b'S'] || chars == [b'S', b'A', b'M']
+                })
+                .count()
+                == 2
+            {
                 xmasses += 1;
             }
         }

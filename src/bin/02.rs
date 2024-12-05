@@ -1,16 +1,17 @@
-#![feature(array_windows)]
 advent_of_code::solution!(2);
 
 fn get_num(bytes: &[u8], idx: &mut usize) -> u32 {
-    let mut c = 0;
-    while idx < &mut bytes.len() && !bytes[*idx].is_ascii_whitespace() {
-        c = c * 10 + (bytes[*idx] - b'0') as u32;
+    unsafe {
+        let mut c = 0;
+        while idx < &mut bytes.len() && bytes.get_unchecked(*idx).is_ascii_digit() {
+            c = c * 10 + (bytes.get_unchecked(*idx) - b'0') as u32;
+            *idx += 1;
+        }
+
         *idx += 1;
+
+        c
     }
-
-    *idx += 1;
-
-    c
 }
 
 pub fn part_one(input: &str) -> Option<u32> {
@@ -54,50 +55,99 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    Some(
-        input
-            .lines()
-            .map(|line| {
-                line.split_whitespace()
-                    .into_iter()
-                    .map(|c| c.parse::<u8>().unwrap())
-                    .collect::<Vec<u8>>()
-            })
-            .filter(|levels| {
-                if save_levels(levels) {
-                    return true;
-                }
+    let mut count = 0;
 
-                (0..levels.len())
-                    .find(|i| {
-                        let mut adjusted_level = levels.clone();
-                        adjusted_level.remove(*i);
+    for line in input.lines() {
+        let (correct, levels) = is_valid(line.as_bytes());
 
-                        save_levels(&adjusted_level)
-                    })
-                    .is_some()
-            })
-            .count() as u32,
-    )
-}
-
-fn save_levels(levels: &Vec<u8>) -> bool {
-    let mut increasing = false;
-    let mut decreasing = false;
-    for [a, b] in levels.array_windows() {
-        let diff = a.abs_diff(*b);
-        if !(1..=3).contains(&diff) {
-            return false;
+        if correct {
+            count += 1;
+            continue;
         }
 
-        if a < b {
+        if (0..levels.len()).any(|i| is_valid_with_one_removed(&levels, i)) {
+            count += 1;
+        }
+    }
+
+    Some(count)
+}
+
+fn is_valid(bytes: &[u8]) -> (bool, Vec<u32>) {
+    let mut increasing = false;
+    let mut decreasing = false;
+
+    let mut i = 0;
+
+    let mut prev = get_num(bytes, &mut i);
+    let mut levels = Vec::with_capacity(20);
+    levels.push(0);
+
+    let mut correct = true;
+
+    // Use unsafe to directly access raw pointers for faster iteration
+    while i < bytes.len() {
+        let current = get_num(bytes, &mut i);
+        levels.push(current);
+
+        let diff = prev.abs_diff(current);
+        if diff > 3 {
+            correct = false; // Invalid difference
+        }
+
+        if prev < current {
             increasing = true;
-        } else if a > b {
+        } else if prev > current {
             decreasing = true;
         }
 
         if increasing && decreasing {
-            return false;
+            correct = false;
+        }
+
+        prev = current;
+    }
+
+    (correct, levels)
+}
+
+fn is_valid_with_one_removed(levels: &[u32], remove_index: usize) -> bool {
+    let len = levels.len();
+    if len < 2 {
+        return true;
+    }
+
+    let mut increasing = false;
+    let mut decreasing = false;
+
+    // Use unsafe to directly access raw pointers for faster iteration
+    unsafe {
+        let mut prev: Option<u32> = None;
+
+        for i in 0..len {
+            if i == remove_index {
+                continue; // Skip the element being "removed"
+            }
+
+            if let Some(prev_value) = prev {
+                let current = *levels.get_unchecked(i);
+                let diff = prev_value.abs_diff(current);
+                if diff > 3 {
+                    return false; // Invalid difference
+                }
+
+                if prev_value < current {
+                    increasing = true;
+                } else if prev_value > current {
+                    decreasing = true;
+                }
+
+                if increasing && decreasing {
+                    return false;
+                }
+            }
+
+            prev = Some(*levels.get_unchecked(i));
         }
     }
 

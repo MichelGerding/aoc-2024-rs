@@ -114,11 +114,7 @@ fn main() {
                     download::handle(day);
                 }
             }
-            AppArguments::Solve {
-                day,
-                dhat,
-                submit,
-            } => solve::handle(day, true, dhat, submit),
+            AppArguments::Solve { day, dhat, submit } => solve::handle(day, true, dhat, submit),
             #[cfg(feature = "today")]
             AppArguments::Today => {
                 match Day::today() {
