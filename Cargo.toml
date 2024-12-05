@@ -30,3 +30,4 @@ tinyjson = "2.5.1"
 # Solution dependencies
 fancy-regex = "0.8"
 lazy_static = "1.4.0"
+rayon = "1.10.0"

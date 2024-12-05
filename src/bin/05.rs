@@ -1,4 +1,4 @@
-#![feature(ascii_char)]
+use rayon::prelude::*;
 
 advent_of_code::solution!(5);
 
@@ -15,6 +15,53 @@ const RULES_COUNT: usize = 21;
 const MAX_VALUE: usize = 99;
 
 
+pub fn part_one(input: &str) -> Option<u32> {
+    let (order_rules, updates) = parse_input(input);
+
+    Some(
+        updates
+            .par_iter()
+            .filter_map(|update| {
+                if !rules_correct(&order_rules, &update) {
+                    return None;
+                }
+
+                let center = update.len() / 2;
+                Some(update[center] as u32)
+            }).sum()
+    )
+}
+
+
+pub fn part_two(input: &str) -> Option<u32> {
+    let (order_rules, mut updates) = parse_input(input);
+    Some(
+        updates
+            .par_iter_mut()
+            .filter_map(|pages| {
+                unsafe {
+                    // check all rules
+                    if rules_correct(&order_rules, &pages) {
+                        return None;
+                    }
+                    // get the applying rules and get there order
+                    let rules: Vec<(usize, usize)> = applying_rules(&order_rules, &pages);
+                    let page_order = resolve_page_order(&rules);
+
+                    // sort based on the rules
+                    pages.sort_unstable_by(|a, b| {
+                        let ai = page_order.get_unchecked(*a);
+                        let bi = page_order.get_unchecked(*b);
+
+                        ai.cmp(bi)
+                    });
+
+                    let center = pages.len() / 2;
+                    Some(*pages.get_unchecked_mut(center) as u32)
+                }
+            }).sum())
+}
+
 fn parse_input(input: &str) -> ([(usize, usize); RULES_COUNT], [Vec<usize>; PAGES_COUNT]) {
     let bytes = input.as_bytes();
     let mut rules = [(0usize, 0usize); RULES_COUNT];
@@ -25,8 +72,8 @@ fn parse_input(input: &str) -> ([(usize, usize); RULES_COUNT], [Vec<usize>; PAGE
         let mut i = 0;
         for idx in 0..RULES_COUNT {
             // Direct fast byte to number conversion
-            let a = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i+1) - b'0')) as usize;
-            let b = ((bytes.get_unchecked(i+3) - b'0') * 10 + (bytes.get_unchecked(i+4) - b'0')) as usize;
+            let a = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i + 1) - b'0')) as usize;
+            let b = ((bytes.get_unchecked(i + 3) - b'0') * 10 + (bytes.get_unchecked(i + 4) - b'0')) as usize;
 
             *rules.get_unchecked_mut(idx) = (a, b);
             i += 6;
@@ -38,13 +85,12 @@ fn parse_input(input: &str) -> ([(usize, usize); RULES_COUNT], [Vec<usize>; PAGE
             let page_vec = pages.get_unchecked_mut(idx);
 
             loop {
-                let b = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i+1) - b'0')) as usize;
+                let b = ((bytes.get_unchecked(i) - b'0') * 10 + (bytes.get_unchecked(i + 1) - b'0')) as usize;
                 page_vec.push(b);
                 i += 3;
-                if *bytes.get_unchecked(i-1) == b'\n' {
+                if *bytes.get_unchecked(i - 1) == b'\n' {
                     break;
                 }
-
             }
         }
     }
@@ -92,20 +138,7 @@ fn applying_rules(order_rules: &[(usize, usize)], page_numbers: &[usize]) -> Vec
     }
 }
 
-pub fn part_one(input: &str) -> Option<u32> {
-    let (order_rules, updates) = parse_input(input);
-
-    Some(
-        updates.iter().filter(|update| {
-            rules_correct(&order_rules, &update)
-        }).map(|pages| {
-            let len = pages.len();
-            pages[len / 2] as u32
-        }).sum()
-    )
-}
-
-unsafe fn resolve_page_order(rules: &[(usize, usize)]) -> Vec<usize> {
+unsafe fn resolve_page_order(rules: &[(usize, usize)]) -> [isize; MAX_VALUE + 1] {
     let mut graph = [const { Vec::new() }; MAX_VALUE + 1];
     let mut indegree = [0; MAX_VALUE + 1];
 
@@ -116,15 +149,15 @@ unsafe fn resolve_page_order(rules: &[(usize, usize)]) -> Vec<usize> {
     }
 
     // Queue of nodes with zero indegree
-    let mut queue: Vec<usize> = indegree.iter().enumerate()
-        .filter_map(|(node, &deg)| if deg == 0 { Some(node) } else { None })
-        .collect();
+    let mut queue: Vec<usize> = indegree.iter().enumerate().filter_map(|(node, &deg)| if deg == 0 { Some(node) } else { None }).collect();
 
-    let mut result = Vec::with_capacity(PAGES_COUNT);
+    let mut result = [-1; MAX_VALUE + 1];
 
+    let mut idx = 0;
     // Topological sort
     while let Some(node) = queue.pop() {
-        result.push(node);
+        *result.get_unchecked_mut(node) = idx;
+        idx += 1;
         for &neighbor in &graph[node] {
             *indegree.get_unchecked_mut(neighbor) -= 1;
             if indegree.get_unchecked(neighbor) == &0 {
@@ -134,44 +167,6 @@ unsafe fn resolve_page_order(rules: &[(usize, usize)]) -> Vec<usize> {
     }
 
     result
-}
-
-pub fn part_two(input: &str) -> Option<u32> {
-    let (order_rules, updates) = parse_input(input);
-
-    let pages_out_of_order = updates.iter().filter(|update| {
-        // check all rules
-        !rules_correct(&order_rules, &update)
-    }).collect::<Vec<_>>();
-
-    unsafe {
-        // fix the order of the pages
-        let reordered_pages = pages_out_of_order.iter()
-            .map(|pages| {
-                // get the applying rules and get there order
-                let rules: Vec<(usize, usize)> = applying_rules(&order_rules, &pages);
-                let page_order = resolve_page_order(&rules);
-
-                let mut page_with_idx = pages.iter().map(|page_nr| {
-                    let page_order_idx = page_order.iter().position(|x| x == page_nr).unwrap();
-                    (page_order_idx, *page_nr)
-                }).collect::<Vec<(usize, usize)>>();
-
-                page_with_idx.sort_by(|(a, _), (b, _)| a.cmp(b));
-
-                page_with_idx.iter().map(|(_, page_nr)| *page_nr).collect::<Vec<usize>>()
-            }).collect::<Vec<_>>();
-
-
-        let center_pages = reordered_pages
-            .iter()
-            .map(|pages| {
-                let len = pages.len();
-                *pages.get_unchecked(len / 2) as u32
-            }).collect::<Vec<u32>>();
-
-        Some(center_pages.iter().sum())
-    }
 }
 
 #[cfg(test)]
