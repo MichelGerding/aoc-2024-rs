@@ -1,5 +1,3 @@
-#![feature(ascii_char)]
-
 advent_of_code::solution!(1);
 
 #[cfg(not(debug_assertions))]

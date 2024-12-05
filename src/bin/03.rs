@@ -1,4 +1,3 @@
-#![feature(ascii_char)]
 
 advent_of_code::solution!(3);
 
