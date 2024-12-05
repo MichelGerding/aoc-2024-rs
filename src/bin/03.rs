@@ -1,11 +1,5 @@
-use fancy_regex::Regex;
-use lazy_static::lazy_static;
-
 advent_of_code::solution!(3);
 
-lazy_static! {
-    static ref DO_RE: Regex = Regex::new(r"(?<=^|do\(\))((.|\n)*?)(?=don't\(\)|$)").unwrap();
-}
 
 pub fn multsum_captures(bytes: &[u8]) -> u32 {
     let mut sum = 0;
