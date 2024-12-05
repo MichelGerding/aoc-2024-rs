@@ -1,3 +1,5 @@
+#![feature(ascii_char)]
+
 advent_of_code::solution!(3);
 
 
@@ -61,13 +63,15 @@ pub fn part_two(input: &str) -> Option<u32> {
 
     while start < bytes.len() {
         // Look for "do("
-        if start + 3 <= bytes.len() && &bytes[start..start + 3] == b"do(" {
-            start += 3;
+        if start + 4 <= bytes.len() && (start == 0 || &bytes[start..start + 4] == b"do()") {
+            if start != 0 {
+                start += 3;
+            }
             let mut end = start;
 
             // Find the matching "don't()" or end of string
             while end < bytes.len() {
-                if end + 6 <= bytes.len() && &bytes[end..end + 6] == b"don't" {
+                if end + 7 <= bytes.len() && &bytes[end..end + 7] == b"don't()" {
                     break;
                 }
                 end += 1;
@@ -90,13 +94,13 @@ mod tests {
 
     #[test]
     fn test_part_one() {
-        let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
-        assert_eq!(result, Some(175700056));
+        let result = part_one(&advent_of_code::template::read_file("examples", DAY));
+        assert_eq!(result, Some(161));
     }
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
-        assert_eq!(result, Some(71668682));
+        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
+        assert_eq!(result, Some(48));
     }
 }

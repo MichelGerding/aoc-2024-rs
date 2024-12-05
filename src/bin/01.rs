@@ -1,9 +1,27 @@
+#![feature(ascii_char)]
+
 advent_of_code::solution!(1);
 
-pub fn part_one(input: &str) -> Option<u32> {
-    const SIZE: usize = 1000;
-    const NUM_SIZE: usize = 4;
+#[cfg(not(debug_assertions))]
+const SIZE: usize = 1000;
+#[cfg(not(debug_assertions))]
+const NUM_SIZE: usize = 5;
+#[cfg(not(debug_assertions))]
+const ASCII_CONVERSION_FACTOR: usize = 533328; // 48 * 11_111: 48 * ('1'*(NUMSIZE+1))
 
+
+#[cfg(debug_assertions)]
+const SIZE: usize = 6;
+#[cfg(debug_assertions)]
+const NUM_SIZE: usize = 1;
+#[cfg(debug_assertions)]
+const ASCII_CONVERSION_FACTOR: usize = 48; // 48 * 1: 48 * ('1'*(NUMSIZE+1))
+
+const OFFSET_NEXT_NUM: usize = NUM_SIZE + 3;
+const MAX_NUM: usize = 100000;
+
+
+pub fn part_one(input: &str) -> Option<u32> {
     let mut left = [0i32; SIZE];
     let mut right = [0i32; SIZE];
 
@@ -12,14 +30,14 @@ pub fn part_one(input: &str) -> Option<u32> {
         let mut i = 0;
         for j in 0..SIZE {
             // Parse first number
-            let mut l = 0i32;
-            for c in bytes.get_unchecked(i..=i + NUM_SIZE) {
+            let mut l = 0;
+            for c in bytes.get_unchecked(i..i + NUM_SIZE) {
                 l = l * 10 + *c as i32;
             }
 
             // Parse second number
-            let mut r = 0i32;
-            for c in bytes.get_unchecked(i + 4 + NUM_SIZE..=i + 4 + NUM_SIZE + NUM_SIZE) {
+            let mut r = 0;
+            for c in bytes.get_unchecked(i + OFFSET_NEXT_NUM..i + OFFSET_NEXT_NUM + NUM_SIZE) {
                 r = r * 10 + *c as i32;
             }
 
@@ -27,7 +45,7 @@ pub fn part_one(input: &str) -> Option<u32> {
             *left.get_unchecked_mut(j) = l;
             *right.get_unchecked_mut(j) = r;
             // Advance to next row
-            i += 4 + NUM_SIZE + NUM_SIZE + 2;
+            i += OFFSET_NEXT_NUM + NUM_SIZE + 1;
         }
 
         left.sort_unstable();
@@ -35,50 +53,51 @@ pub fn part_one(input: &str) -> Option<u32> {
     }
 
     Some(
-        left.iter()
+        left
+            .iter()
             .zip(right.iter())
-            .map(|(l, r)| (*l - *r).abs() as u32)
-            .sum::<u32>(),
+            .map(|(l, r)| (*l - *r).abs())
+            .sum::<i32>() as u32,
     )
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    const SIZE: usize = 999;
-    const MAX_NUM: usize = 100000;
-    const NUM_SIZE: usize = 4;
-
     let mut left = [0usize; SIZE];
-    let mut right = [0u32; MAX_NUM];
+    let mut right = [0usize; MAX_NUM];
 
     unsafe {
         let bytes = input.as_bytes();
         let mut i = 0;
         for idx in 0..SIZE {
             // Parse first number
-            let mut l = 0usize;
-            for c in bytes.get_unchecked(i..=i + NUM_SIZE) {
+            let mut l = 0;
+            for c in bytes.get_unchecked(i..i + NUM_SIZE) {
                 l = l * 10 + *c as usize;
             }
+            l -= ASCII_CONVERSION_FACTOR;
+
 
             // Parse second number
-            let mut r = 0u32;
-            for &c in bytes.get_unchecked(i + 4 + NUM_SIZE..=i + 4 + NUM_SIZE + NUM_SIZE) {
-                r = r * 10 + c as u32;
+            let mut r = 0;
+            for c in bytes.get_unchecked(i + OFFSET_NEXT_NUM..i + OFFSET_NEXT_NUM + NUM_SIZE) {
+                r = r * 10 + *c as usize;
             }
-            r -= 533328;
+            r -= ASCII_CONVERSION_FACTOR; // 533328
+
 
             // Add to vectors and HashMap
             *left.get_unchecked_mut(idx) = l;
-            *right.get_unchecked_mut(r as usize) += r;
+            *right.get_unchecked_mut(r) += r;
 
             // Advance to next row
-            i += 4 + NUM_SIZE + NUM_SIZE + 2;
+            i += OFFSET_NEXT_NUM + NUM_SIZE + 1;
         }
 
         Some(
-            left.iter()
-                .map(|v| *right.get_unchecked(*v - 533328))
-                .sum::<u32>(),
+            left
+                .iter()
+                .map(|v| *right.get_unchecked(*v))
+                .sum::<usize>() as u32
         )
     }
 }
@@ -89,13 +108,13 @@ mod tests {
 
     #[test]
     fn test_part_one() {
-        let result = part_one(&advent_of_code::template::read_file("inputs", DAY));
-        assert_eq!(result, Some(1222801u32));
+        let result = part_one(&advent_of_code::template::read_file("examples", DAY));
+        assert_eq!(result, Some(11));
     }
 
     #[test]
     fn test_part_two() {
-        let result = part_two(&advent_of_code::template::read_file("inputs", DAY));
-        assert_eq!(result, Some(22545250u32));
+        let result = part_two(&advent_of_code::template::read_file("examples", DAY));
+        assert_eq!(result, Some(31));
     }
 }
