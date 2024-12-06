@@ -107,13 +107,9 @@ impl Guard {
     pub fn check_loop(&self, grid: &[Vec<u8>], bounds: (isize, isize)) -> bool {
         let mut pos = self.position.clone();
         let mut dir = self.guard_direction.clone();
-        let mut visited = HashSet::new();
 
-        loop {
-            if !visited.insert((pos, dir)) {
-                return true;
-            }
-
+        let mut i = 0;
+        while i < 130 * 130 {
             let offset = dir.to_offset();
             let next_pos = pos.add(offset);
 
@@ -126,7 +122,10 @@ impl Guard {
             } else {
                 dir = dir.rotate_right();
             }
+             i += 1;
         }
+
+        true
     }
 
     pub fn get_possible_spots(&self, grid: &Vec<Vec<u8>>) -> HashSet<Position> {
