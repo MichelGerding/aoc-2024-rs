@@ -149,8 +149,8 @@ impl Guard {
 
 pub fn part_one(input: &str) -> Option<u32> {
     let (grid, mut guard) = parse_input(input);
-    let mut visited_spots = HashSet::new();
-
+    let mut visited_spots = [0u8; 130*130];
+    let mut spot_count = 0;
 
     let bounds = (
         grid[0].len() as isize,
@@ -158,12 +158,15 @@ pub fn part_one(input: &str) -> Option<u32> {
     );
 
     while guard.position.in_grid(&bounds) {
-        visited_spots.insert(guard.position.clone());
+        let visit_idx = guard.position.y * 130 + guard.position.x;
+        if visited_spots[visit_idx as usize] == 0{
+            visited_spots[visit_idx as usize] = 1;
+            spot_count += 1;
+        }
         guard.move_spot(&grid);
     }
 
-
-    Some(visited_spots.len() as u32)
+    Some(spot_count)
 }
 
 fn parse_input(input: &str) -> (Vec<Vec<u8>>, Guard) {
