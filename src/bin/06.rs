@@ -131,28 +131,19 @@ impl Guard {
 
     pub fn get_possible_spots(&self, grid: &Vec<Vec<u8>>) -> HashSet<Position> {
         let mut guard = self.clone();
+        let mut visited_spots = HashSet::new();
+
         let bounds = (
             grid[0].len() as isize,
             grid.len() as isize,
         );
 
-        let mut visited_spots = HashSet::with_capacity(grid.len() * grid[0].len());
-        let mut possible_obstacle = HashSet::with_capacity(grid.len() * grid[0].len());
-
-        const OFFSETS: [(isize, isize); 3] = [(-1, 0), (0, 1), (1, 0)]; // Only cardinal directions
         while guard.position.in_grid(&bounds) {
-            if visited_spots.insert(guard.position.clone()) {
-                for &(dx, dy) in &OFFSETS {
-                    let np = guard.position.add(Position { x: dx, y: dy });
-                    if np.in_grid(&bounds) && !visited_spots.contains(&np) {
-                        possible_obstacle.insert(np);
-                    }
-                }
-            }
+            visited_spots.insert(guard.position.clone());
             guard.move_spot(&grid);
         }
 
-        possible_obstacle
+        visited_spots
     }
 }
 
