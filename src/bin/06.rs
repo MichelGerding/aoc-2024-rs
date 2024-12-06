@@ -1,10 +1,10 @@
-use std::collections::HashSet;
+use rustc_hash::FxHashSet;
 use std::hash::Hash;
 use rayon::prelude::*;
 
 advent_of_code::solution!(6);
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, PartialEq, Hash)]
 enum GuardDirections {
     UP, LEFT, RIGHT, DOWN,
 }
@@ -28,7 +28,7 @@ impl GuardDirections {
         }
     }
 }
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 struct Position {
     x: isize,
     y: isize,
@@ -52,30 +52,11 @@ impl Position {
     }
 }
 
-impl Hash for Position {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.x.hash(state);
-        self.y.hash(state);
-    }
-}
-
-impl PartialEq<Self> for Position {
-    fn eq(&self, other: &Self) -> bool {
-        self.x == other.x && self.y == other.y
-    }
-}
-
-impl Eq for Position {}
-
-
 #[derive(Copy, Clone)]
 struct Guard {
     pub guard_direction: GuardDirections,
     pub position: Position,
 }
-
-
-
 
 impl Guard {
     pub fn move_spot(&mut self, grid: &Vec<Vec<u8>>) {
@@ -128,9 +109,10 @@ impl Guard {
         true
     }
 
-    pub fn get_possible_spots(&self, grid: &Vec<Vec<u8>>) -> HashSet<Position> {
+    pub fn get_possible_spots(&self, grid: &Vec<Vec<u8>>) -> FxHashSet<Position> {
         let mut guard = self.clone();
-        let mut visited_spots = HashSet::new();
+        let mut visited_spots = FxHashSet::default();
+        visited_spots.reserve(130*130);
 
         let bounds = (
             grid[0].len() as isize,
@@ -144,6 +126,31 @@ impl Guard {
 
         visited_spots
     }
+}
+
+
+fn parse_input(input: &str) -> (Vec<Vec<u8>>, Guard) {
+    let mut guard: Option<Guard> = None;
+    let mut char_to_direction = [GuardDirections::UP; 256];
+    char_to_direction[b'^' as usize] = GuardDirections::UP;
+    char_to_direction[b'v' as usize] = GuardDirections::DOWN;
+    char_to_direction[b'>' as usize] = GuardDirections::RIGHT;
+    char_to_direction[b'<' as usize] = GuardDirections::LEFT;
+
+    (input.lines().enumerate().map(|(y, row)| {
+        row.bytes().enumerate().map(|(x, c)| {
+            match c {
+                b'^' | b'v' | b'>' | b'<' => {
+                    guard = Some(Guard {
+                        position: Position::new(x, y),
+                        guard_direction: char_to_direction[c as usize]
+                    });
+                    b'.'
+                }
+                other => other,
+            }
+        }).collect::<Vec<u8>>()
+    }).collect::<Vec<Vec<u8>>>(), guard.unwrap())
 }
 
 
@@ -167,30 +174,6 @@ pub fn part_one(input: &str) -> Option<u32> {
     }
 
     Some(spot_count)
-}
-
-fn parse_input(input: &str) -> (Vec<Vec<u8>>, Guard) {
-    let mut guard: Option<Guard> = None;
-    (input.lines().enumerate().map(|(y, row)| {
-        row.bytes().enumerate().map(|(x, c)| {
-            match c {
-                b'^' | b'v' | b'>' | b'<' => {
-                    guard = Some(Guard {
-                        position: Position::new(x, y),
-                        guard_direction: match c {
-                            b'^' => GuardDirections::UP,
-                            b'v' => GuardDirections::DOWN,
-                            b'>' => GuardDirections::RIGHT,
-                            b'<' => GuardDirections::LEFT,
-                            _ => unreachable!(),
-                        },
-                    });
-                    b'.'
-                }
-                other => other,
-            }
-        }).collect::<Vec<u8>>()
-    }).collect::<Vec<Vec<u8>>>(), guard.unwrap())
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
