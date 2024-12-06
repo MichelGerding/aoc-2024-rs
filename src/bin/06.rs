@@ -139,15 +139,12 @@ impl Guard {
         let mut visited_spots = HashSet::with_capacity(grid.len() * grid[0].len());
         let mut possible_obstacle = HashSet::with_capacity(grid.len() * grid[0].len());
 
+        const OFFSETS: [(isize, isize); 3] = [(-1, 0), (0, 1), (1, 0)]; // Only cardinal directions
         while guard.position.in_grid(&bounds) {
-            visited_spots.insert(guard.position.clone());
-            for dx in -1..1 {
-                for dy in -1..1 {
-
-                    let o = Position { x: dx, y: dy };
-                    let np = guard.position.add(o);
-
-                    if np.in_grid(&bounds) {
+            if visited_spots.insert(guard.position.clone()) {
+                for &(dx, dy) in &OFFSETS {
+                    let np = guard.position.add(Position { x: dx, y: dy });
+                    if np.in_grid(&bounds) && !visited_spots.contains(&np) {
                         possible_obstacle.insert(np);
                     }
                 }
