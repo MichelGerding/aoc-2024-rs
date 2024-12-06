@@ -1,21 +1,23 @@
-use rustc_hash::FxHashSet;
-use std::hash::Hash;
 use rayon::prelude::*;
+use std::hash::Hash;
 
 advent_of_code::solution!(6);
 
 #[derive(Copy, Clone, PartialEq, Hash)]
 enum GuardDirections {
-    UP, LEFT, RIGHT, DOWN,
+    UP,
+    LEFT,
+    RIGHT,
+    DOWN,
 }
 
 impl GuardDirections {
-    fn to_offset(&self) -> Position {
+    fn to_offset(&self) -> i32 {
         match self {
-            GuardDirections::UP => Position { y: -1, x: 0 },
-            GuardDirections::LEFT => Position { y: 0, x: -1 },
-            GuardDirections::RIGHT => Position { y: 0, x: 1 },
-            GuardDirections::DOWN => Position { y: 1, x: 0 },
+            GuardDirections::UP => -(GRID_SIZE as i32 + 1), //Position { y: -1, x: 0 },
+            GuardDirections::LEFT => -1,                    //Position { y: 0, x: -1 },
+            GuardDirections::RIGHT => 1,                    //Position { y: 0, x: 1 },
+            GuardDirections::DOWN => GRID_SIZE as i32 + 1,  //Position { y: 1, x: 0 },
         }
     }
 
@@ -28,177 +30,150 @@ impl GuardDirections {
         }
     }
 }
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-struct Position {
-    x: isize,
-    y: isize,
-}
-
-impl Position {
-    fn new(x: usize, y: usize) -> Position {
-        Position { x: x as isize, y: y as isize }
-    }
-
-    fn add(&self, rhs: Self) -> Self {
-        let xo = self.x + rhs.x;
-        let yo = self.y + rhs.y;
-
-        Position::new(xo as usize, yo as usize)
-    }
-
-    pub fn in_grid(&self, &(x_max, y_max): &(isize, isize)) -> bool {
-        !(self.x < 0 || self.x >= x_max ||
-            self.y < 0 || self.y >= y_max)
-    }
-}
 
 #[derive(Copy, Clone)]
 struct Guard {
-    pub guard_direction: GuardDirections,
-    pub position: Position,
+    pub direction: GuardDirections,
+    pub position: i32,
 }
 
-impl Guard {
-    pub fn move_spot(&mut self, grid: &Vec<Vec<u8>>) {
-        let bounds = (
-            grid[0].len() as isize,
-            grid.len() as isize,
-        );
+#[cfg(not(debug_assertions))]
+const GRID_SIZE: usize = 130;
+#[cfg(not(debug_assertions))]
+const INITIAL_POSITION: i32 = (84 * (GRID_SIZE + 1) + 89) as i32;
 
-        let offset = self.guard_direction.to_offset();
-        let np = &self.position.add(offset);
+#[cfg(debug_assertions)]
+const GRID_SIZE: usize = 10;
+#[cfg(debug_assertions)]
+const INITIAL_POSITION: i32 = (6 * (GRID_SIZE + 1) + 4) as i32;
 
-        if !np.in_grid(&bounds) {
-            self.position = np.clone();
-            return;
-        }
+fn guard_move(bytes: &[u8]) -> Option<(i32, [u8; GRID_SIZE * GRID_SIZE + GRID_SIZE + 1])> {
+    let mut visited = [0u8; GRID_SIZE * GRID_SIZE + GRID_SIZE + 1];
+    let mut count = 0;
 
+    // guard starts at INITIAL_POSITION going up
+    let mut guard = Guard {
+        direction: GuardDirections::UP,
+        position: INITIAL_POSITION,
+    };
 
-        let c = grid[np.y as usize][np.x as usize];
-        if c == b'.' {
-            let n_offset = self.guard_direction.to_offset();
-            let new_pos = self.position.add(n_offset);
+    loop {
+        unsafe {
+            let offset = guard.direction.to_offset();
+            let np = guard.position + offset;
 
-            self.position = new_pos;
-            return;
-        }
-        self.guard_direction = GuardDirections::rotate_right(&self.guard_direction);
-    }
-
-    pub fn check_loop(&self, grid: &[Vec<u8>], bounds: (isize, isize)) -> bool {
-        let mut pos = self.position.clone();
-        let mut dir = self.guard_direction.clone();
-
-        let mut i = 0;
-        while i < 130 * 130 {
-            let offset = dir.to_offset();
-            let next_pos = pos.add(offset);
-
-            if !next_pos.in_grid(&bounds) {
-                return false;
-            }
-
-            if grid[next_pos.y as usize][next_pos.x as usize] == b'.' {
-                pos = next_pos;
-            } else {
-                dir = dir.rotate_right();
-            }
-             i += 1;
-        }
-
-        true
-    }
-
-    pub fn get_possible_spots(&self, grid: &Vec<Vec<u8>>) -> FxHashSet<Position> {
-        let mut guard = self.clone();
-        let mut visited_spots = FxHashSet::default();
-        visited_spots.reserve(130*130);
-
-        let bounds = (
-            grid[0].len() as isize,
-            grid.len() as isize,
-        );
-
-        while guard.position.in_grid(&bounds) {
-            visited_spots.insert(guard.position.clone());
-            guard.move_spot(&grid);
-        }
-
-        visited_spots
-    }
-}
-
-
-fn parse_input(input: &str) -> (Vec<Vec<u8>>, Guard) {
-    let mut guard: Option<Guard> = None;
-    let mut char_to_direction = [GuardDirections::UP; 256];
-    char_to_direction[b'^' as usize] = GuardDirections::UP;
-    char_to_direction[b'v' as usize] = GuardDirections::DOWN;
-    char_to_direction[b'>' as usize] = GuardDirections::RIGHT;
-    char_to_direction[b'<' as usize] = GuardDirections::LEFT;
-
-    (input.lines().enumerate().map(|(y, row)| {
-        row.bytes().enumerate().map(|(x, c)| {
-            match c {
-                b'^' | b'v' | b'>' | b'<' => {
-                    guard = Some(Guard {
-                        position: Position::new(x, y),
-                        guard_direction: char_to_direction[c as usize]
-                    });
-                    b'.'
+            if np < 0 || np > ((GRID_SIZE + 1) * GRID_SIZE) as i32 {
+                if *visited.get_unchecked(guard.position as usize) == 0 {
+                    count += 1;
+                    *visited.get_unchecked_mut(guard.position as usize) = 1;
                 }
-                other => other,
+
+                break;
             }
-        }).collect::<Vec<u8>>()
-    }).collect::<Vec<Vec<u8>>>(), guard.unwrap())
-}
 
+            let c = *bytes.get_unchecked(np as usize);
 
-pub fn part_one(input: &str) -> Option<u32> {
-    let (grid, mut guard) = parse_input(input);
-    let mut visited_spots = [0u8; 130*130];
-    let mut spot_count = 0;
+            if c == b'\n' {
+                if *visited.get_unchecked(guard.position as usize) == 0 {
+                    count += 1;
+                    *visited.get_unchecked_mut(guard.position as usize) = 1;
+                }
 
-    let bounds = (
-        grid[0].len() as isize,
-        grid.len() as isize,
-    );
+                break;
+            }
 
-    while guard.position.in_grid(&bounds) {
-        let visit_idx = guard.position.y * 130 + guard.position.x;
-        if visited_spots[visit_idx as usize] == 0{
-            visited_spots[visit_idx as usize] = 1;
-            spot_count += 1;
+            if c != b'#' {
+                let n_offset = guard.direction.to_offset();
+                let new_pos = guard.position + n_offset;
+
+                if *visited.get_unchecked(guard.position as usize) == 0 {
+                    count += 1;
+                    *visited.get_unchecked_mut(guard.position as usize) = 1;
+                }
+
+                guard.position = new_pos;
+                continue;
+            }
         }
-        guard.move_spot(&grid);
+
+        guard.direction = GuardDirections::rotate_right(&guard.direction);
     }
 
-    Some(spot_count)
+    Some((count, visited))
+}
+
+pub fn part_one(bytes: &str) -> Option<u32> {
+    let (count, _) = guard_move(bytes.as_bytes())?;
+    Some(count as u32)
 }
 
 pub fn part_two(input: &str) -> Option<u32> {
-    let (grid, guard) = parse_input(input);
+    let bytes = input.as_bytes();
 
-    let bounds = (
-        grid[0].len() as isize,
-        grid.len() as isize,
-    );
+    let (_, visited) = guard_move(bytes)?;
 
-    Some(guard.get_possible_spots(&grid)
-        .par_iter()
-        .filter(|&pos| {
-            let mut g = grid.clone(); // Clone the grid for thread safety
-
-            if g[pos.y as usize][pos.x as usize] != b'.' {
-                return false;
+    let to_check: Vec<usize> = visited
+        .iter()
+        .enumerate()
+        .filter_map(|(i, &v)| {
+            if v == 0 {
+                return None;
             }
 
-            g[pos.y as usize][pos.x as usize] = b'O';
-            let looped = guard.check_loop(&g, bounds);
-
-            looped
+            Some(i)
         })
-        .count() as u32)
+        .collect();
+
+    let loops = to_check
+        .par_iter()
+        .filter(|&&cell| {
+            let mut guard = Guard {
+                direction: GuardDirections::UP,
+                position: INITIAL_POSITION,
+            };
+
+            let max = GRID_SIZE * GRID_SIZE;
+            let mut i = 0;
+            loop {
+                if i > max {
+                    return true;
+                }
+                i += 1;
+
+                unsafe {
+                    let offset = guard.direction.to_offset();
+                    let np = guard.position + offset;
+
+                    if np == cell as i32 {
+                        guard.direction = GuardDirections::rotate_right(&guard.direction);
+                        continue;
+                    }
+
+                    if np < 0 || np > ((GRID_SIZE + 1) * GRID_SIZE) as i32 {
+                        return false;
+                    }
+
+                    let c = *bytes.get_unchecked(np as usize);
+
+                    if c == b'\n' {
+                        return false;
+                    }
+
+                    if c != b'#' {
+                        let n_offset = guard.direction.to_offset();
+                        let new_pos = guard.position + n_offset;
+
+                        guard.position = new_pos;
+                        continue;
+                    }
+                }
+
+                guard.direction = GuardDirections::rotate_right(&guard.direction);
+            }
+        })
+        .count() as u32;
+
+    Some(loops)
 }
 
 #[cfg(test)]
