@@ -1,52 +1,33 @@
 use std::collections::HashSet;
 use std::hash::Hash;
+use rayon::prelude::*;
 
 advent_of_code::solution!(6);
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 enum GuardDirections {
-    UP,
-    LEFT,
-    RIGHT,
-    DOWN,
+    UP, LEFT, RIGHT, DOWN,
 }
 
 impl GuardDirections {
-    pub fn to_offset(&self) -> Position {
+    fn to_offset(&self) -> Position {
         match self {
-            GuardDirections::UP => Position{ y: -1,x: 0},
-            GuardDirections::LEFT => Position{ y: 0,x: -1},
-            GuardDirections::RIGHT => Position{ y: 0,x: 1},
-            GuardDirections::DOWN => Position{ y: 1, x: 0},
+            GuardDirections::UP => Position { y: -1, x: 0 },
+            GuardDirections::LEFT => Position { y: 0, x: -1 },
+            GuardDirections::RIGHT => Position { y: 0, x: 1 },
+            GuardDirections::DOWN => Position { y: 1, x: 0 },
         }
     }
 
-    pub fn rotate_right(direction: &GuardDirections) -> Self {
-        match direction {
+    fn rotate_right(&self) -> Self {
+        match self {
             GuardDirections::UP => GuardDirections::RIGHT,
             GuardDirections::RIGHT => GuardDirections::DOWN,
             GuardDirections::DOWN => GuardDirections::LEFT,
             GuardDirections::LEFT => GuardDirections::UP,
         }
     }
-
-    pub fn as_string(&self) -> String {
-        match self {
-            GuardDirections::UP => String::from("^"),
-            GuardDirections::LEFT => String::from("<"),
-            GuardDirections::RIGHT => String::from(">"),
-            GuardDirections::DOWN => String::from("-"),
-        }
-    }
 }
-
-impl Hash for GuardDirections {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.as_string().hash(state);
-    }
-}
-
-
 #[derive(Copy, Clone)]
 struct Position {
     x: isize,
@@ -59,8 +40,8 @@ impl Position {
     }
 
     fn add(&self, rhs: Self) -> Self {
-        let xo= self.x + rhs.x;
-        let yo= self.y + rhs.y;
+        let xo = self.x + rhs.x;
+        let yo = self.y + rhs.y;
 
         Position::new(xo as usize, yo as usize)
     }
@@ -69,9 +50,6 @@ impl Position {
         !(self.x < 0 || self.x >= x_max ||
             self.y < 0 || self.y >= y_max)
     }
-
-
-
 }
 
 impl Hash for Position {
@@ -96,31 +74,12 @@ struct Guard {
     pub position: Position,
 }
 
+
+
+
 impl Guard {
-
-    pub fn check_loop(&self, grid: &Vec<Vec<u8>>) -> bool {
-        let mut g = self.clone();
-
-        let mut visited_spots: HashSet<(Position, GuardDirections)> = HashSet::new();
-        let bounds  = (
-            grid[0].len() as isize,
-            grid.len() as isize,
-        );
-
-        while g.position.in_grid(&bounds) {
-            if visited_spots.contains(&(g.position, g.guard_direction)) {
-               return true;
-            }
-
-            visited_spots.insert((g.position.clone(), g.guard_direction.clone()));
-            g.move_spot(&grid);
-        }
-
-        false
-    }
-
     pub fn move_spot(&mut self, grid: &Vec<Vec<u8>>) {
-        let bounds  = (
+        let bounds = (
             grid[0].len() as isize,
             grid.len() as isize,
         );
@@ -140,80 +99,77 @@ impl Guard {
             let new_pos = self.position.add(n_offset);
 
             self.position = new_pos;
-            return
+            return;
         }
         self.guard_direction = GuardDirections::rotate_right(&self.guard_direction);
     }
-}
 
-pub fn print_grid(grid: &[Vec<u8>], guard: &Guard) {
-    let gp = guard.position;
+    pub fn check_loop(&self, grid: &[Vec<u8>], bounds: (isize, isize)) -> bool {
+        let mut pos = self.position.clone();
+        let mut dir = self.guard_direction.clone();
+        let mut visited = HashSet::new();
 
-    for y in 0..grid.len() {
-        for x in 0..grid[0].len() {
-            if gp.x == x as isize && gp.y == y as isize {
-                print!("{}", guard.guard_direction.as_string());
+        loop {
+            if !visited.insert((pos, dir)) {
+                return true;
+            }
+
+            let offset = dir.to_offset();
+            let next_pos = pos.add(offset);
+
+            if !next_pos.in_grid(&bounds) {
+                return false;
+            }
+
+            if grid[next_pos.y as usize][next_pos.x as usize] == b'.' {
+                pos = next_pos;
             } else {
-              print!("{}", grid[y][x] as char);
+                dir = dir.rotate_right();
             }
         }
-        println!();
+    }
+
+    pub fn get_possible_spots(&self, grid: &Vec<Vec<u8>>) -> HashSet<Position> {
+        let mut guard = self.clone();
+        let bounds = (
+            grid[0].len() as isize,
+            grid.len() as isize,
+        );
+
+        let mut visited_spots = HashSet::with_capacity(grid.len() * grid[0].len());
+        let mut possible_obstacle = HashSet::with_capacity(grid.len() * grid[0].len());
+
+        while guard.position.in_grid(&bounds) {
+            visited_spots.insert(guard.position.clone());
+            for dx in -1..1 {
+                for dy in -1..1 {
+
+                    let o = Position { x: dx, y: dy };
+                    let np = guard.position.add(o);
+
+                    if np.in_grid(&bounds) {
+                        possible_obstacle.insert(np);
+                    }
+                }
+            }
+            guard.move_spot(&grid);
+        }
+
+        possible_obstacle
     }
 }
 
+
 pub fn part_one(input: &str) -> Option<u32> {
-    let mut guard: Option<Guard> = None;
-
-    let grid = input.lines().enumerate().map(|(y, row)| {
-        row.bytes().enumerate().map(|(x, c)| {
-            match c {
-                b'^' => {
-                    guard = Some(Guard {
-                        position: Position::new(x, y),
-                        guard_direction: GuardDirections::UP
-                    });
-                    b'.'
-                    // break;
-                }
-                b'v' => {
-                    guard = Some(Guard {
-                        position: Position::new(x, y),
-                        guard_direction: GuardDirections::DOWN
-                    });
-                    b'.'
-                    // break;
-                }
-                b'>' => {
-                    guard = Some(Guard {
-                        position: Position::new(x, y),
-                        guard_direction: GuardDirections::RIGHT
-                    });
-                    b'.'
-                    // break;
-                }
-                b'<' => {
-                    guard = Some(Guard {
-                        position: Position::new(x, y),
-                        guard_direction: GuardDirections::LEFT
-                    });
-                    b'.'
-                    // break;
-                }
-                v => v,
-            }
-        }).collect::<Vec<u8>>()
-    }).collect::<Vec<Vec<u8>>>();
-
-
-    let mut guard = guard.unwrap();
+    let (grid, mut guard) = parse_input(input);
     let mut visited_spots = HashSet::new();
 
 
-    let bounds  = (
+    let bounds = (
         grid[0].len() as isize,
         grid.len() as isize,
     );
-    // while guard.position.in_grid(&bounds) {
+
     while guard.position.in_grid(&bounds) {
         visited_spots.insert(guard.position.clone());
         guard.move_spot(&grid);
@@ -223,10 +179,9 @@ pub fn part_one(input: &str) -> Option<u32> {
     Some(visited_spots.len() as u32)
 }
 
-pub fn part_two(input: &str) -> Option<u32> {
+fn parse_input(input: &str) -> (Vec<Vec<u8>>, Guard) {
     let mut guard: Option<Guard> = None;
-
-    let mut grid = input.lines().enumerate().map(|(y, row)| {
+    (input.lines().enumerate().map(|(y, row)| {
         row.bytes().enumerate().map(|(x, c)| {
             match c {
                 b'^' | b'v' | b'>' | b'<' => {
@@ -245,28 +200,32 @@ pub fn part_two(input: &str) -> Option<u32> {
                 other => other,
             }
         }).collect::<Vec<u8>>()
-    }).collect::<Vec<Vec<u8>>>();
+    }).collect::<Vec<Vec<u8>>>(), guard.unwrap())
+}
 
+pub fn part_two(input: &str) -> Option<u32> {
+    let (grid, guard) = parse_input(input);
 
-    let guard = guard.unwrap();
-    let mut loops = 0;
+    let bounds = (
+        grid[0].len() as isize,
+        grid.len() as isize,
+    );
 
-    for y in 0..grid.len() {
-        for x in 0..grid[0].len() {
-            // set a single spot to an obstacle
-            if grid[y][x] != b'.' {
-                continue;
+    Some(guard.get_possible_spots(&grid)
+        .par_iter()
+        .filter(|&pos| {
+            let mut g = grid.clone(); // Clone the grid for thread safety
+
+            if g[pos.y as usize][pos.x as usize] != b'.' {
+                return false;
             }
-            grid[y][x] = b'O';
 
-            if guard.check_loop(&grid) {
-                loops += 1;
-            }
-            grid[y][x] = b'.';
-        }
-    }
+            g[pos.y as usize][pos.x as usize] = b'O';
+            let looped = guard.check_loop(&g, bounds);
 
-    Some(loops)
+            looped
+        })
+        .count() as u32)
 }
 
 #[cfg(test)]
