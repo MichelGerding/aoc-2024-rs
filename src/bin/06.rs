@@ -47,8 +47,10 @@ const GRID_SIZE: usize = 10;
 #[cfg(debug_assertions)]
 const INITIAL_POSITION: i32 = (6 * (GRID_SIZE + 1) + 4) as i32;
 
-fn guard_move(bytes: &[u8]) -> Option<(i32, [u8; GRID_SIZE * GRID_SIZE + GRID_SIZE + 1])> {
-    let mut visited = [0u8; GRID_SIZE * GRID_SIZE + GRID_SIZE + 1];
+const MAX_INDEX: usize = GRID_SIZE * GRID_SIZE + GRID_SIZE + 1;
+
+fn guard_move(bytes: &[u8]) -> Option<(i32, [i32; MAX_INDEX])> {
+    let mut visited = [0i32; MAX_INDEX];
     let mut count = 0;
 
     // guard starts at INITIAL_POSITION going up
@@ -65,7 +67,7 @@ fn guard_move(bytes: &[u8]) -> Option<(i32, [u8; GRID_SIZE * GRID_SIZE + GRID_SI
             if np < 0 || np > ((GRID_SIZE + 1) * GRID_SIZE) as i32 {
                 if *visited.get_unchecked(guard.position as usize) == 0 {
                     count += 1;
-                    *visited.get_unchecked_mut(guard.position as usize) = 1;
+                    *visited.get_unchecked_mut(guard.position as usize) = guard.position;
                 }
 
                 break;
@@ -76,7 +78,7 @@ fn guard_move(bytes: &[u8]) -> Option<(i32, [u8; GRID_SIZE * GRID_SIZE + GRID_SI
             if c == b'\n' {
                 if *visited.get_unchecked(guard.position as usize) == 0 {
                     count += 1;
-                    *visited.get_unchecked_mut(guard.position as usize) = 1;
+                    *visited.get_unchecked_mut(guard.position as usize) = guard.position;
                 }
 
                 break;
@@ -88,7 +90,7 @@ fn guard_move(bytes: &[u8]) -> Option<(i32, [u8; GRID_SIZE * GRID_SIZE + GRID_SI
 
                 if *visited.get_unchecked(guard.position as usize) == 0 {
                     count += 1;
-                    *visited.get_unchecked_mut(guard.position as usize) = 1;
+                    *visited.get_unchecked_mut(guard.position as usize) = guard.position;
                 }
 
                 guard.position = new_pos;
@@ -109,42 +111,31 @@ pub fn part_one(bytes: &str) -> Option<u32> {
 
 pub fn part_two(input: &str) -> Option<u32> {
     let bytes = input.as_bytes();
-
     let (_, visited) = guard_move(bytes)?;
 
-    let to_check: Vec<usize> = visited
-        .iter()
-        .enumerate()
-        .filter_map(|(i, &v)| {
-            if v == 0 {
-                return None;
-            }
+    let g = Guard {
+        direction: GuardDirections::UP,
+        position: INITIAL_POSITION,
+    };
 
-            Some(i)
-        })
-        .collect();
-
-    let loops = to_check
+    let loops = visited
         .par_iter()
+        .filter(|&&v| v != 0)
         .filter(|&&cell| {
-            let mut guard = Guard {
-                direction: GuardDirections::UP,
-                position: INITIAL_POSITION,
-            };
+            let mut guard = g.clone();
+            let mut step = 0;
 
-            let max = GRID_SIZE * GRID_SIZE;
-            let mut i = 0;
-            loop {
-                if i > max {
-                    return true;
-                }
-                i += 1;
+            unsafe {
+                loop {
+                    if step > GRID_SIZE * GRID_SIZE {
+                        return true;
+                    }
+                    step += 1;
 
-                unsafe {
                     let offset = guard.direction.to_offset();
                     let np = guard.position + offset;
 
-                    if np == cell as i32 {
+                    if np == cell {
                         guard.direction = GuardDirections::rotate_right(&guard.direction);
                         continue;
                     }
@@ -166,9 +157,8 @@ pub fn part_two(input: &str) -> Option<u32> {
                         guard.position = new_pos;
                         continue;
                     }
+                    guard.direction = GuardDirections::rotate_right(&guard.direction);
                 }
-
-                guard.direction = GuardDirections::rotate_right(&guard.direction);
             }
         })
         .count() as u32;
