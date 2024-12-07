@@ -1,130 +1,117 @@
 advent_of_code::solution!(7);
 
 use rayon::prelude::*;
-use ahash::AHashSet;
+
 fn can_produce_target(target: u64, numbers: &[u64]) -> bool {
-    let n = numbers.len();
+    unsafe {
+        let n = numbers.len();
+        let mut prev = vec![numbers[0]];
 
-    let mut prev = AHashSet::with_capacity(n);
-    prev.insert(numbers[0]);
+        for i in 1..n - 1 {
+            let mut current = Vec::with_capacity(prev.len() * 2);
+            let n = numbers.get_unchecked(i);
 
-    for i in 1..n {
-        let mut current = AHashSet::with_capacity(prev.len() * 2);
+            for &value in &prev {
+                let sum = value + n;
+                let product = value * n;
 
-        for &value in &prev {
-            let sum = value + numbers[i];
-            let product = value * numbers[i];
+                if sum <= target { current.push(sum); }
+                if product <= target { current.push(product); }
+            }
 
-            if sum <= target { current.insert(sum); }
-            if product <= target { current.insert(product); }
+            prev = current;
         }
 
-        prev = current;
-    }
+        let n = numbers.get_unchecked(n - 1);
+        for &value in &prev {
+            if value + n == target || value * n == target {
+                return true;
+            }
+        }
 
-    prev.contains(&target)
+        false
+    }
 }
 
 
 fn can_produce_target_concat(target: u64, numbers: &[u64]) -> bool {
-    let n = numbers.len();
+    unsafe {
+        let n = numbers.len();
+        let mut prev = vec![numbers[0]];
 
-    let mut prev = AHashSet::with_capacity(n);
-    prev.insert(numbers[0]);
+        for i in 1..n - 1 {
+            let mut current = Vec::with_capacity(prev.len() * 2);
+            let n = numbers.get_unchecked(i);
 
-    for i in 1..n {
-        let mut current = AHashSet::with_capacity(prev.len() * 2);
+            for &value in &prev {
+                let sum = value + n;
+                let product = value * n;
+                let concatenated = fast_concatenate(value, *n);
 
-        for &value in &prev {
-            let sum = value + numbers[i];
-            let product = value * numbers[i];
-            let concatenated = fast_concatenate(value, numbers[i]);
+                if sum <= target { current.push(sum); }
+                if product <= target { current.push(product); }
+                if concatenated <= target { current.push(concatenated); }
+            }
 
-            if sum <= target { current.insert(sum); }
-            if product <= target { current.insert(product); }
-            if concatenated <= target { current.insert(concatenated); }
+            prev = current;
         }
 
-        prev = current;
+        let n = numbers.last().unwrap_unchecked();
+        for &value in &prev {
+            if value + n == target || value * n == target || fast_concatenate(value, *n) == target {
+                return true;
+            }
+        }
+        false
     }
-
-    prev.contains(&target)
 }
 pub fn fast_concatenate(a: u64, b: u64) -> u64 {
-    let mut b_digits = 0;
-    let mut b_copy = b;
-
-    // Count the number of digits in `b`
-    while b_copy > 0 {
-        b_copy /= 10;
-        b_digits += 1;
-    }
-
-    // If `b` is 0, it has 1 digit
-    if b == 0 {
-        b_digits = 1;
-    }
-
-    // Perform the concatenation
-    a * 10u64.pow(b_digits) + b
+    a * 10u64.pow(b.ilog10() + 1) + b
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
     Some(
-        input
-            .par_lines() // Process lines in parallel
+        input.par_lines()
             .filter_map(|line| {
-                if line.is_empty() {
-                    return None;
-                }
+                unsafe {
+                    if line.is_empty() {
+                        return None;
+                    }
+                    let mut parts = line.splitn(2, ':');
+                    let target = parts.next().unwrap_unchecked().parse::<u64>().unwrap_unchecked();
+                    let nums_str = parts.next().unwrap_unchecked();
 
-                // Use manual splitting for efficiency
-                let mut parts = line.splitn(2, ':');
-                let result = parts.next()?.parse::<u64>().ok()?;
-                let nums_str = parts.next()?;
-
-                // Parse numbers using unsafe for performance
-                let nums = unsafe {
-                    nums_str
+                    let nums = nums_str
                         .split_ascii_whitespace()
                         .map(|x| x.parse::<u64>().unwrap_unchecked())
-                };
+                        .collect::<Vec<u64>>();
 
-                Some((result, nums.collect::<Vec<u64>>()))
-            })
-            .filter(|(result, nums)| can_produce_target(*result, nums))
-            .map(|(result, _)| result)
-            .sum::<u64>(),
+                    Some((target, nums))
+                }
+            }).filter(|(result, nums)| can_produce_target(*result, nums)).map(|(result, _)| result).sum::<u64>(),
     )
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     Some(
-        input
-            .par_lines() // Process lines in parallel
-            // .lines() // Process lines in parallel
+        input.par_lines()
             .filter_map(|line| {
-                if line.is_empty() {
-                    return None;
-                }
+                unsafe {
+                    if line.is_empty() {
+                        return None;
+                    }
+                    let mut parts = line.splitn(2, ':');
+                    let target = parts.next().unwrap_unchecked().parse::<u64>().unwrap_unchecked();
+                    let nums_str = parts.next().unwrap_unchecked();
 
-                // Use manual splitting for efficiency
-                let mut parts = line.splitn(2, ':');
-                let result = parts.next()?.parse::<u64>().ok()?;
-                let nums_str = parts.next()?;
-
-                // Parse numbers using unsafe for performance
-                let nums = unsafe {
-                    nums_str
+                    let nums = nums_str
                         .split_ascii_whitespace()
                         .map(|x| x.parse::<u64>().unwrap_unchecked())
-                };
+                        .collect::<Vec<u64>>();
 
-                Some((result, nums.collect::<Vec<u64>>()))
-            })
-            .filter(|(result, nums)| can_produce_target_concat(*result, nums))
-            .map(|(result, _)| result)
-            .sum::<u64>(),
+                    Some((target, nums))
+                }
+            }).filter(|(result, nums)| can_produce_target_concat(*result, nums)).map(|(result, _)| result).sum::<u64>(),
     )
 }
 
