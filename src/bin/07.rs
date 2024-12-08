@@ -65,53 +65,46 @@ fn can_produce_target_concat(target: u64, numbers: &[u64]) -> bool {
         false
     }
 }
+
 pub fn fast_concatenate(a: u64, b: u64) -> u64 {
     a * 10u64.pow(b.ilog10() + 1) + b
 }
 
 pub fn part_one(input: &str) -> Option<u64> {
     Some(
-        input.par_lines()
-            .filter_map(|line| {
-                unsafe {
-                    if line.is_empty() {
-                        return None;
-                    }
-                    let mut parts = line.splitn(2, ':');
-                    let target = parts.next().unwrap_unchecked().parse::<u64>().unwrap_unchecked();
-                    let nums_str = parts.next().unwrap_unchecked();
-
-                    let nums = nums_str
-                        .split_ascii_whitespace()
-                        .map(|x| x.parse::<u64>().unwrap_unchecked())
-                        .collect::<Vec<u64>>();
-
-                    Some((target, nums))
+        input.par_lines().filter_map(|line| {
+            unsafe {
+                if line.is_empty() {
+                    return None;
                 }
-            }).filter(|(result, nums)| can_produce_target(*result, nums)).map(|(result, _)| result).sum::<u64>(),
+                let mut parts = line.splitn(2, ':');
+                let target = parts.next().unwrap_unchecked().parse::<u64>().unwrap_unchecked();
+                let nums_str = parts.next().unwrap_unchecked();
+
+                let nums = nums_str.split_ascii_whitespace().map(|x| x.parse::<u64>().unwrap_unchecked()).collect::<Vec<u64>>();
+
+                Some((target, nums))
+            }
+        }).filter(|(result, nums)| can_produce_target(*result, nums)).map(|(result, _)| result).sum::<u64>(),
     )
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     Some(
-        input.par_lines()
-            .filter_map(|line| {
-                unsafe {
-                    if line.is_empty() {
-                        return None;
-                    }
-                    let mut parts = line.splitn(2, ':');
-                    let target = parts.next().unwrap_unchecked().parse::<u64>().unwrap_unchecked();
-                    let nums_str = parts.next().unwrap_unchecked();
-
-                    let nums = nums_str
-                        .split_ascii_whitespace()
-                        .map(|x| x.parse::<u64>().unwrap_unchecked())
-                        .collect::<Vec<u64>>();
-
-                    Some((target, nums))
+        input.par_lines().filter_map(|line| {
+            unsafe {
+                if line.is_empty() {
+                    return None;
                 }
-            }).filter(|(result, nums)| can_produce_target_concat(*result, nums)).map(|(result, _)| result).sum::<u64>(),
+                let mut parts = line.splitn(2, ':');
+                let target = parts.next().unwrap_unchecked().parse::<u64>().unwrap_unchecked();
+                let nums_str = parts.next().unwrap_unchecked();
+
+                let nums = nums_str.split_ascii_whitespace().map(|x| x.parse::<u64>().unwrap_unchecked()).collect::<Vec<u64>>();
+
+                Some((target, nums))
+            }
+        }).filter(|(result, nums)| can_produce_target_concat(*result, nums)).map(|(result, _)| result).sum::<u64>(),
     )
 }
 
