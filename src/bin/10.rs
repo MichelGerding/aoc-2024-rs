@@ -1,124 +1,128 @@
-use ahash::{AHashMap};
 use petgraph::prelude::*;
 use rayon::prelude::*;
 
-
 advent_of_code::solution!(10);
 
-fn parse_grid_to_graph(input: &str) -> (Graph<(usize, usize, u8), u8>, Vec<(usize, usize)>) {
-    let grid: Vec<&[u8]> = input.lines().map(|line| line.as_bytes()).collect();
+#[cfg(not(debug_assertions))]
+const GRID_SIZE: usize = 55;
 
-    let rows = grid.len();
-    let cols = grid[0].len();
+#[cfg(debug_assertions)]
+const GRID_SIZE: usize = 8;
+
+fn parse_grid_to_graph(input: &str) -> (Graph<(usize, usize, u8), u8>, Vec<NodeIndex>) {
+    // Split input once to avoid repeated allocations
+    let lines: Vec<&[u8]> = input
+        .lines()
+        .map(|line| line.as_bytes())
+        .collect();
+
 
     let mut graph = Graph::new();
-    let mut node_map = AHashMap::with_capacity(rows * cols);
-    let mut trail_heads = Vec::with_capacity(rows * cols);
+    let mut node_map = [NodeIndex::new(0); GRID_SIZE * GRID_SIZE];
+    let mut trail_heads = Vec::with_capacity(300);
 
-    // Step 1: Create nodes and store their indices in parallel
-    grid.par_iter().enumerate().for_each(|(r, row)| {
-        row.iter().enumerate().for_each(|(c, &value)| {
-            unsafe {
-                let node = graph.add_node((r, c, value));
-                node_map.insert((r, c), node);
-                if value == b'0' {
-                    trail_heads.push((r, c));
-                }
+    for r in 0..GRID_SIZE {
+        for c in 0..GRID_SIZE {
+            let value = lines[r][c];
+            let node = graph.add_node((r, c, value));
+            if value == b'0' {
+                trail_heads.push(node);
             }
-        });
-    });
+            node_map[r * GRID_SIZE + c] = node;
+        }
+    }
 
-    // Step 2: Create edges between nodes in parallel
-    (0..rows).into_par_iter().for_each(|r| {
-        (0..cols).for_each(|c| {
-            unsafe {
-                let current_value = grid[r][c];
-                let current_node = *node_map.get(&(r, c)).unwrap();
 
-                if r > 0 && grid[r - 1][c] == current_value + 1 {
-                    let neighbor_node = *node_map.get(&(r - 1, c)).unwrap();
-                    graph.add_edge(current_node, neighbor_node, 1);
-                }
-                if r < rows - 1 && grid[r + 1][c] == current_value + 1 {
-                    let neighbor_node = *node_map.get(&(r + 1, c)).unwrap();
-                    graph.add_edge(current_node, neighbor_node, 1);
-                }
-                if c > 0 && grid[r][c - 1] == current_value + 1 {
-                    let neighbor_node = *node_map.get(&(r, c - 1)).unwrap();
-                    graph.add_edge(current_node, neighbor_node, 1);
-                }
-                if c < cols - 1 && grid[r][c + 1] == current_value + 1 {
-                    let neighbor_node = *node_map.get(&(r, c + 1)).unwrap();
+    for r in 0..GRID_SIZE {
+        for c in 0..GRID_SIZE {
+            let current_value = lines[r][c];
+            let current_node = node_map[r * GRID_SIZE + c];
+
+            let directions = [
+                r.checked_sub(1).map(|nr| (nr, c)),
+                if r + 1 < GRID_SIZE { Some((r + 1, c)) } else { None },
+                c.checked_sub(1).map(|nc| (r, nc)),
+                if c + 1 < GRID_SIZE { Some((r, c + 1)) } else { None },
+            ];
+
+            for dir in directions.iter().filter_map(|d| *d) {
+                let (nr, nc) = dir;
+                if lines[nr][nc] == current_value + 1 {
+                    let neighbor_node = node_map[nr * GRID_SIZE + nc];
                     graph.add_edge(current_node, neighbor_node, 1);
                 }
             }
-        });
-    });
-
+        }
+    }
     (graph, trail_heads)
 }
-
 
 
 pub fn part_one(input: &str) -> Option<u32> {
     let (graph, trail_heads) = parse_grid_to_graph(input);
 
+    Some(
+        trail_heads
+            .par_iter()
+            .map(|&start_node| {
 
+                let mut visited = vec![false; GRID_SIZE * GRID_SIZE];
+                let mut stack = Vec::with_capacity(GRID_SIZE * GRID_SIZE);
 
-    let sum = trail_heads.par_iter().map(|&start| {
-        let start_node = graph
-            .node_indices()
-            .find(|&n| graph[n].0 == start.0 && graph[n].1 == start.1)
-            .unwrap();
+                stack.push(start_node);
+                visited[start_node.index()] = true;
 
-        let mut end_count = 0;
-        let mut dfs = Dfs::new(&graph, start_node);
+                let mut end_count = 0;
 
-        while let Some(node) = dfs.next(&graph) {
-            let value = graph[node].2;
-            if value == b'9' {
-                end_count += 1;
-            }
-        }
+                while let Some(node_idx) = stack.pop() {
+                    if graph[node_idx].2 == b'9' {
+                        end_count += 1;
+                    }
 
-        end_count
-    }).sum();
+                    for neighbor in graph.neighbors(node_idx) {
+                        let neighbor_idx = neighbor.index();
+                        if !visited[neighbor_idx] {
+                            visited[neighbor_idx] = true;
+                            stack.push(neighbor);
+                        }
+                    }
+                }
 
-    Some(sum)
+                end_count
+            })
+            .sum()
+    )
 }
 
 
 pub fn part_two(input: &str) -> Option<u32> {
     let (graph, trail_heads) = parse_grid_to_graph(input);
 
-    let sum = trail_heads.par_iter().map(|&start| {
-        let start_node = graph
-            .node_indices()
-            .find(|&n| graph[n].0 == start.0 && graph[n].1 == start.1)
-            .unwrap();
+    let sum = trail_heads
+        .par_iter()
+        .map(|&start_node| {
+            let mut stack = vec![(start_node, vec![false; GRID_SIZE * GRID_SIZE])];
+            let mut unique_paths = 0;
 
-        let mut stack = vec![(start_node, vec![start_node])];
-        let mut unique_paths = 0;
+            while let Some((node, mut visited)) = stack.pop() {
+                if graph[node].2 == b'9' {
+                    unique_paths += 1;
+                }
 
-        while let Some((node, path)) = stack.pop() {
-            let value = graph[node].2;
+                visited[node.index()]= true; // Mark the current node as visited
 
-            if value == b'9' {
-                unique_paths += 1; // Found a unique path ending at a 9
-                continue;
-            }
-
-            for neighbor in graph.neighbors_directed(node, petgraph::Direction::Outgoing) {
-                if !path.contains(&neighbor) {
-                    let mut new_path = path.clone();
-                    new_path.push(neighbor);
-                    stack.push((neighbor, new_path));
+                // Directly mutate the visited set and push onto stack
+                for neighbor in graph.neighbors_directed(node, Outgoing) {
+                    if !visited[neighbor.index()] {
+                        visited[neighbor.index()] = true; // Mark neighbor as visited
+                        stack.push((neighbor, visited.clone())); // Push new state (visited state)
+                        visited[neighbor.index()] = false; // Unmark the neighbor for next traversal
+                    }
                 }
             }
-        }
 
-        unique_paths
-    }).sum();
+            unique_paths
+        }).sum();
 
     Some(sum)
 }
