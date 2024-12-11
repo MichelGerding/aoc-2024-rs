@@ -1,28 +1,17 @@
 use ahash::AHashMap;
+use memoize::memoize;
+
 use rayon::prelude::*;
-use once_cell::sync::Lazy;
-use std::sync::Mutex;
 
 advent_of_code::solution!(11);
 
-
-static CACHE: Lazy<Mutex<AHashMap<(u64, usize), usize>>> =
-    Lazy::new(|| Mutex::new(AHashMap::new()));
-
+#[memoize(CustomHasher: AHashMap, SharedCache)]
 fn blink_stone(stone: u64, blinks: usize) -> usize {
-    // Check if the result is already cached
-    let cache_key = (stone, blinks);
-    if let Some(&cached_result) = CACHE.lock().unwrap().get(&cache_key) {
-        return cached_result;
-    }
-
-    // Base cases
     if blinks == 0 {
         return 1;
     }
     if stone == 0 {
         let result = blink_stone(1, blinks - 1);
-        CACHE.lock().unwrap().insert(cache_key, result);
         return result;
     }
 
@@ -34,8 +23,6 @@ fn blink_stone(stone: u64, blinks: usize) -> usize {
         blink_stone(stone * 2024, blinks - 1)
     };
 
-    // Cache the result
-    CACHE.lock().unwrap().insert(cache_key, result);
     result
 }
 
