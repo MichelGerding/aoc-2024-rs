@@ -1,11 +1,11 @@
-use ahash::AHashMap;
 use memoize::memoize;
 
+use rustc_hash::FxHashMap;
 use rayon::prelude::*;
 
 advent_of_code::solution!(11);
 
-#[memoize(CustomHasher: AHashMap, SharedCache)]
+#[memoize(CustomHasher: FxHashMap, HasherInit: FxHashMap::default(), SharedCache)]
 fn blink_stone(stone: u64, blinks: usize) -> usize {
     if blinks == 0 {
         return 1;
