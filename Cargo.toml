@@ -28,11 +28,8 @@ pico-args = "0.5.0"
 tinyjson = "2.5.1"
 
 # Solution dependencies
-fancy-regex = "0.8"
-lazy_static = "1.4.0"
 rayon = "1.10.0"
-rustc-hash = "2.1.0"
 ahash = "0.7"
 itertools = "0.13.0"
 petgraph = "0.6.5"
-bit-vec = "0.8.0"
+memoize = "0.4.2"
