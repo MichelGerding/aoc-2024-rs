@@ -11,6 +11,9 @@ jobs:
         name: Continuous Integration
         steps:
             - uses: actions/checkout@v4
+            - uses: actions-rs/toolchain@v1
+              with:
+                toolchain: nightly
             - name: Set up cargo cache
               uses: actions/cache@v4
               continue-on-error: false

@@ -26,6 +26,7 @@ dependencies = [
  "dhat",
  "itertools",
  "memoize",
+ "once_cell",
  "petgraph",
  "pico-args",
  "rayon",
