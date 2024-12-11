@@ -5,34 +5,6 @@ use std::sync::Mutex;
 
 advent_of_code::solution!(11);
 
-fn _blink(mut stones: Vec<u64>, amount: usize) -> Option<usize> {
-    for _ in 0..amount {
-        let mut new_stones = Vec::new();
-        stones.iter_mut().for_each(|stone| {
-            if *stone == 0 {
-                *stone = 1;
-                return;
-            }
-
-            let digit_count = stone.to_string().len();
-            if digit_count % 2 == 0 {
-                let split = 10_u64.pow((digit_count / 2) as u32);
-                let left = *stone / split;
-                let right = *stone % split;
-
-                *stone = left;
-                new_stones.push(right);
-            } else {
-                *stone *= 2024;
-            }
-        });
-
-        stones.extend(new_stones);
-    }
-
-    Some(stones.len())
-}
-
 
 static CACHE: Lazy<Mutex<AHashMap<(u64, usize), usize>>> =
     Lazy::new(|| Mutex::new(AHashMap::new()));
