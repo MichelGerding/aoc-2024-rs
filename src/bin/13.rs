@@ -1,55 +1,22 @@
-#![feature(exact_size_is_empty)]
-
 advent_of_code::solution!(13);
 
-type Inputs = (isize, isize);
-
-#[derive(Debug)]
 struct Puzzle {
-    btn_a: Inputs,
-    btn_b: Inputs,
-    target: Inputs,
+    btn_a: (i64, i64),
+    btn_b: (i64, i64),
+    target: (i64, i64),
 }
 
-fn parse_button(line: &str, split_char: char) -> Inputs {
-    let mut parts = line.rsplitn(2, ':');
-    let mut parts = parts.next().unwrap().split(',');
 
-    let x_fac = parts
-        .next()
-        .unwrap()
-        .rsplit(split_char)
-        .next()
-        .unwrap()
-        .parse()
-        .unwrap();
-    let y_fac = parts
-        .next()
-        .unwrap()
-        .rsplit(split_char)
-        .next()
-        .unwrap()
-        .parse()
-        .unwrap();
-
-    (x_fac, y_fac)
-}
-
-fn solve_button_presses(puzzle: &Puzzle) -> Option<Inputs> {
+fn solve_button_presses(puzzle: &Puzzle) -> Option<(i64, i64)> {
     let (a_x, a_y) = puzzle.btn_a;
     let (b_x, b_y) = puzzle.btn_b;
     let (target_x, target_y) = puzzle.target;
 
-    // Solve the equations:
-    // a_x * a + b_x * b = target_x
-    // a_y * a + b_y * b = target_y
-
     let det = a_x * b_y - b_x * a_y;
-    // Cramer's rule to find a and b
-    let det_a = target_x * b_y - b_x * target_y; // Determinant for "a"
-    let det_b = a_x * target_y - target_x * a_y; // Determinant for "b"
 
-    // Check divisibility to ensure integer solutions
+    let det_a = target_x * b_y - b_x * target_y;
+    let det_b = a_x * target_y - target_x * a_y;
+
     if det_a % det != 0 || det_b % det != 0 {
         return None; // No integer solution
     }
@@ -57,60 +24,84 @@ fn solve_button_presses(puzzle: &Puzzle) -> Option<Inputs> {
     let a = det_a / det;
     let b = det_b / det;
 
-    if a >= 0 && b >= 0 {
-        Some((a, b))
-    } else {
-        None // No non-negative solution
+    Some((a, b))
+}
+
+
+fn parse_target(bytes: &[u8]) -> ((i64, i64), usize) {
+    // Locate ',' to determine the end of the X value
+    let x_end = bytes[9..].iter().position(|&c| c == b',').unwrap() + 9;
+    let end_y = bytes[x_end..].iter().position(|&c| c == b'\n').unwrap() + x_end;
+    // Parse X directly from bytes
+
+    let mut x = 0;
+    for &b in &bytes[9..x_end] {
+        x = x * 10 + (b - b'0') as i64;
     }
+
+    // Parse Y directly from bytes
+    let mut y = 0;
+    for &b in &bytes[x_end + 4..end_y] {
+        y = y * 10 + (b - b'0') as i64;
+    }
+
+    ((x, y), end_y)
 }
 
-pub fn part_one(input: &str) -> Option<isize> {
-    Some(
-        input
-            .lines()
-            .collect::<Vec<&str>>()
-            .chunks(4)
-            .filter_map(|chunk| {
-                let btn_a = parse_button(chunk[0], '+');
-                let btn_b = parse_button(chunk[1], '+');
-                let target = parse_button(chunk[2], '=');
+pub fn parse_button(input: &[u8]) -> (i64, i64) {
+    let a = ((input[12] - b'0') * 10 + (input[13] - b'0')) as i64;
+    let b = ((input[18] - b'0') * 10 + (input[19] - b'0')) as i64;
 
-                let res = solve_button_presses(&Puzzle {
-                    btn_a,
-                    btn_b,
-                    target,
-                });
-
-                res
-            })
-            .map(|(a, b)| a * 3 + b)
-            .sum::<isize>(),
-    )
+    (a, b)
 }
 
-pub fn part_two(input: &str) -> Option<isize> {
-    Some(
-        input
-            .lines()
-            .collect::<Vec<&str>>()
-            .chunks(4)
-            .filter_map(|chunk| {
-                let btn_a = parse_button(chunk[0], '+');
-                let btn_b = parse_button(chunk[1], '+');
-                let target = parse_button(chunk[2], '=');
-                let target = (target.0 + 10000000000000, target.1 + 10000000000000);
+pub fn part_one(input: &str) -> Option<i64> {
+    let mut sum = 0;
 
-                let res = solve_button_presses(&Puzzle {
-                    btn_a,
-                    btn_b,
-                    target,
-                });
+    let bytes = input.as_bytes();
+    let mut idx = 0;
 
-                res
-            })
-            .map(|(a, b)| a * 3 + b)
-            .sum::<isize>(),
-    )
+    while idx <= bytes.len() {
+        let btn_a = parse_button(&bytes[idx..=idx + 20]);
+        let btn_b = parse_button(&bytes[idx + 21..=idx + 41]);
+        let (target, n_idx) = parse_target(&bytes[idx + 42..]);
+
+        idx = idx + 42 + n_idx + 2;
+
+        if let Some((a, b)) = solve_button_presses(&Puzzle {
+            btn_a,
+            btn_b,
+            target,
+        }) {
+            sum += a * 3 + b;
+        }
+    }
+    Some(sum)
+}
+
+pub fn part_two(input: &str) -> Option<i64> {
+    let mut sum = 0;
+
+    let bytes = input.as_bytes();
+    let mut idx = 0;
+
+    while idx <= bytes.len() {
+        let btn_a = parse_button(&bytes[idx..=idx + 20]);
+        let btn_b = parse_button(&bytes[idx + 21..=idx + 41]);
+        let (target, n_idx) = parse_target(&bytes[idx + 42..]);
+        let target = (target.0 + 10000000000000, target.1 + 10000000000000);
+
+        idx = idx + 42 + n_idx + 2;
+
+        if let Some((a, b)) = solve_button_presses(&Puzzle {
+            btn_a,
+            btn_b,
+            target,
+        }) {
+            sum += a * 3 + b;
+        }
+    }
+    Some(sum)
 }
 
 #[cfg(test)]
