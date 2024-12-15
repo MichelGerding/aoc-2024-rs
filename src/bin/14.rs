@@ -140,14 +140,15 @@ pub fn part_one(input: &str) -> Option<u32> {
 }
 
 use rayon::prelude::*;
+use advent_of_code::parse_i32;
 
 fn parse_bot(bytes: &[u8], i: &mut usize) -> Robot {
-    let pos_x = parse_num(&bytes, i);
-    let pos_y = parse_num(&bytes, i);
+    let pos_x = parse_i32(&bytes, i);
+    let pos_y = parse_i32(&bytes, i);
 
     *i += 2;
-    let vel_x = parse_num(&bytes, i);
-    let vel_y = parse_num(&bytes, i);
+    let vel_x = parse_i32(&bytes, i);
+    let vel_y = parse_i32(&bytes, i);
     *i += 2;
 
     Robot {
@@ -156,33 +157,7 @@ fn parse_bot(bytes: &[u8], i: &mut usize) -> Robot {
     }
 }
 
-fn parse_num(buff: &[u8], i: &mut usize) -> i32 {
-    let mut n = 0i32;
-    let mut positive = true;
-    while *i < buff.len() {
-        let c = buff[*i];
-        if c == b'-' {
-            positive = false;
-            *i += 1;
-            continue;
-        }
 
-        if !c.is_ascii_digit() {
-            break;
-        }
-
-        n = n * 10 + (c - b'0') as i32;
-
-        *i += 1;
-    }
-    *i += 1;
-
-    if positive {
-        n
-    } else {
-        n * -1
-    }
-}
 
 pub fn part_two(input: &str) -> Option<i32> {
     #[allow(invalid_value)]

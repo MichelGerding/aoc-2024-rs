@@ -1,18 +1,8 @@
+use advent_of_code::parse_u32;
+
 advent_of_code::solution!(2);
 
-fn get_num(bytes: &[u8], idx: &mut usize) -> u32 {
-    unsafe {
-        let mut c = 0;
-        while idx < &mut bytes.len() && bytes.get_unchecked(*idx).is_ascii_digit() {
-            c = c * 10 + (bytes.get_unchecked(*idx) - b'0') as u32;
-            *idx += 1;
-        }
 
-        *idx += 1;
-
-        c
-    }
-}
 
 pub fn part_one(input: &str) -> Option<u32> {
     Some(
@@ -25,10 +15,10 @@ pub fn part_one(input: &str) -> Option<u32> {
                 let bytes = line.as_bytes();
                 // pars the first number
                 let mut i = 0;
-                let mut prev = get_num(bytes, &mut i);
+                let mut prev = parse_u32(bytes, &mut i);
 
                 while i < bytes.len() {
-                    let c = get_num(bytes, &mut i);
+                    let c = parse_u32(bytes, &mut i);
 
                     let diff = c.abs_diff(prev);
                     if !(1..=3).contains(&diff) {
@@ -79,7 +69,7 @@ fn is_valid(bytes: &[u8]) -> (bool, Vec<u32>) {
 
     let mut i = 0;
 
-    let mut prev = get_num(bytes, &mut i);
+    let mut prev = parse_u32(bytes, &mut i);
     let mut levels = Vec::with_capacity(20);
     levels.push(0);
 
@@ -87,7 +77,7 @@ fn is_valid(bytes: &[u8]) -> (bool, Vec<u32>) {
 
     // Use unsafe to directly access raw pointers for faster iteration
     while i < bytes.len() {
-        let current = get_num(bytes, &mut i);
+        let current = parse_u32(bytes, &mut i);
         levels.push(current);
 
         let diff = prev.abs_diff(current);
