@@ -57,3 +57,45 @@ pub fn parse_u32(bytes: &[u8], idx: &mut usize) -> u32 {
         c
     }
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, )]
+pub enum Direction {
+    North,
+    East,
+    South,
+    West,
+    Any
+}
+
+impl Direction {
+    pub fn rotate_clockwise(&self) -> Direction {
+        match self {
+            Direction::North => Direction::East,
+            Direction::East => Direction::South,
+            Direction::South => Direction::West,
+            Direction::West => Direction::North,
+            _ => *self
+        }
+    }
+
+    pub fn rotate_counterclockwise(&self) -> Direction {
+        match self {
+            Direction::North => Direction::West,
+            Direction::West => Direction::South,
+            Direction::South => Direction::East,
+            Direction::East => Direction::North,
+            _ => *self
+        }
+    }
+
+    pub fn delta(&self) -> (i32, i32) {
+        match self {
+            Direction::North => (-1, 0),
+            Direction::East => (0, 1),
+            Direction::South => (1, 0),
+            Direction::West => (0, -1),
+            _ => (0, 0)
+        }
+    }
+}
+
