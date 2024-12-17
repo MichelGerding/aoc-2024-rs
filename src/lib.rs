@@ -1,3 +1,5 @@
+use std::ops::{Add, Mul};
+
 pub mod template;
 
 // Use this file to add helper functions and additional modules.
@@ -58,6 +60,26 @@ pub fn parse_u32(bytes: &[u8], idx: &mut usize) -> u32 {
     }
 }
 
+
+pub fn parse_unsigned<T>(bytes: &[u8], idx: &mut usize) -> T
+where
+    T: From<u8> + Copy + Default + Add<Output = T> + Mul<Output = T> + 'static, // T must support Add and Mul
+{
+    unsafe {
+        let mut result = T::default();
+        while *idx < bytes.len() && bytes.get_unchecked(*idx).is_ascii_digit() {
+            let digit = bytes.get_unchecked(*idx) - b'0';
+            result = result * T::from(10u8) + T::from(digit);
+            *idx += 1;
+        }
+
+        *idx += 1; // Move past any non-digit character (like a space or delimiter)
+
+        result
+    }
+}
+
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, )]
 pub enum Direction {
     North,
@@ -99,3 +121,32 @@ impl Direction {
     }
 }
 
+pub fn divide_range(start: i64, end: i64, n: i64) -> Vec<(i64, i64)> {
+    if n <= 0 {
+        return vec![];
+    }
+
+    let range_size = (end - start) as f64;
+    let chunk_size = (range_size / n as f64).ceil() as i64;
+
+    (0..n)
+        .map(|i| {
+            let chunk_start = start + (i * chunk_size);
+            let chunk_end = (start + ((i + 1) * chunk_size)).min(end);
+            (chunk_start, chunk_end)
+        })
+        .collect()
+}
+
+pub fn compare_vecs(a: &Vec<u8>, b: &Vec<u8>) -> i64 {
+    a.iter()
+        .enumerate()
+        .map(|(v, i)| {
+            if b.get(v) == Some(i) {
+                return 1;
+            } else {
+                return 0;
+            }
+        })
+        .sum()
+}
