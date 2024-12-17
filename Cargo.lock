@@ -24,6 +24,7 @@ dependencies = [
  "chrono",
  "dhat",
  "itertools",
+ "lazy_static",
  "once_cell",
  "petgraph",
  "pico-args",

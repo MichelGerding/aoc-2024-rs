@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul};
+use std::ops::{Add, Div, DivAssign, Mul, Rem};
 
 pub mod template;
 
@@ -150,3 +150,20 @@ pub fn compare_vecs(a: &Vec<u8>, b: &Vec<u8>) -> i64 {
         })
         .sum()
 }
+
+pub trait Digits<T: From<u64>> {
+    fn digits(self) -> impl Iterator<Item = T> where Self: Sized + PartialOrd<T> + Div<Output = T> + Rem<Output = T> + DivAssign + Copy, Self: From<u64> {
+        let mut x = self;
+        std::iter::from_fn(move || {
+            if x > 0_u64.into() {
+                let digit = x % 10_u64.into();
+                x /= 10_u64.into();
+                Some(digit)
+            } else {
+                None
+            }
+        })
+    }
+}
+
+impl Digits<u64> for u64 {}

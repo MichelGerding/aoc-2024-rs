@@ -1,34 +1,30 @@
+#![feature(portable_simd)]
+
+use std::ops::Index;
+use std::simd::prelude::*;
+use lazy_static::lazy_static;
 use advent_of_code::parse_unsigned;
 
 advent_of_code::solution!(17);
 
-#[derive(Clone)]
+
+
+#[derive(Clone, Debug)]
 struct Computer {
     register_a: u64,
-    register_b: u64,
-    register_c: u64,
     operations: [u8; 16],
+    program_length: usize,
 }
 
 impl Computer {
     fn parse_from_bytes(bytes: &[u8]) -> Self {
         let mut i = 12;
         let register_a = parse_unsigned(bytes, &mut i);
-        i += 12;
-        let register_b = parse_unsigned(bytes, &mut i);
-        i += 12;
-        let register_c = parse_unsigned(bytes, &mut i);
-        i += 10;
-
-        // let program: Vec<u8> = bytes[i..]
-        //     .iter()
-        //     .step_by(2)
-        //     .map(|&b| b - b'0')
-        //     .collect();
+        i += 38;
 
         let mut program = [0; 16];
         let mut program_len = 0;
-        while i < bytes.len() {
+        while i < bytes.len() && program_len < 16 {
             program[program_len] = bytes[i] - b'0';
             program_len += 1;
             i += 2;
@@ -36,24 +32,24 @@ impl Computer {
 
         Computer {
             register_a,
-            register_b,
-            register_c,
             operations: program,
+            program_length: program_len,
         }
     }
+
     fn run(&self) -> Vec<u8> {
         let mut output = Vec::with_capacity(32);
 
         let mut register_a = self.register_a;
-        let mut register_b = self.register_b;
-        let mut register_c = self.register_c;
+        let mut register_b = 0;
+        let mut register_c = 0;
 
         let mut ip = 0;
         while ip < self.operations.len() - 1 {
             let instruction = self.operations[ip];
             let combo_operand = self.operations[ip + 1];
 
-            let combo_operand = match combo_operand {
+            let combo_reg = match combo_operand {
                 0..=3 => combo_operand as u64,
                 4 => register_a,
                 5 => register_b,
@@ -62,58 +58,22 @@ impl Computer {
             };
 
             match instruction {
-                0 => {
-                    // The *adv* instruction (opcode *0*) performs division. The numerator is the value
-                    // in the A register. The denominator is found by raising 2 to the power of the
-                    // instruction's combo operand. The result of the division operation is truncated to
-                    // an integer and then written to the A register.
-                    register_a /= 1 << combo_operand;
-                }
-                1 => {
-                    // The *bxl* instruction (opcode *1*) calculates the bitwise XOR of register B and
-                    // the instruction's literal operand, then stores the result in register B.
-                    register_b ^= combo_operand;
-                }
-                2 => {
-                    // The *bst* instruction (opcode *2*) calculates the value of its combo operand
-                    // modulo 8 (thereby keeping only its lowest 3 bits), then writes that value to the
-                    // B register
-                    register_b = combo_operand & 7;
-                }
+                0 => register_a /= 1 << combo_reg,
+                1 => register_b ^= combo_reg,
+                2 => register_b = combo_reg & 7,
                 3 => {
-                    //The *jnz* instruction (opcode *3*) does nothing if the A register is 0. However,
-                    // if the A register is not zero, it jumps by setting the instruction pointer to
-                    // the value of its literal operand; if this instruction jumps, the instruction
-                    // pointer is not increased by 2 after this instruction.
                     if register_a != 0 {
-                        ip = combo_operand as usize;
+                        ip = combo_reg as usize;
                         continue;
                     }
                 }
-                4 => {
-                    // The *bxc* instruction (opcode *4*) calculates the bitwise XOR of register B and
-                    // register C, then stores the result in register B.
-                    register_b ^= register_c;
-                }
+                4 => register_b ^= register_c,
                 5 => {
-                    // The *out* instruction (opcode *5*) calculates the value of its combo operand
-                    // modulo 8, then outputs that value. (If a program outputs multiple values, they are separated by commas.)
-                    output.push(((combo_operand & 7) as u8) + b'0');
+                    output.push(((combo_reg & 7) as u8) + b'0');
                     output.push(b',');
                 }
-                6 => {
-                    // The *bdv* instruction (opcode *6*) works exactly like the adv instruction except
-                    // that the result is stored in the B register. (The numerator is still read from
-                    // the A register.)
-
-                    register_b = register_a / (1 << combo_operand);
-                }
-                7 => {
-                    // The *cdv* instruction (opcode *7*) works exactly like the adv instruction except
-                    // that the result is stored in the C register. (The numerator is still read from
-                    // the A register.)
-                    register_c = register_a / (1 << combo_operand);
-                }
+                6 => register_b = register_a / (1 << combo_reg),
+                7 => register_c = register_a / (1 << combo_reg),
                 _ => unreachable!("invalid instruction: {}", instruction),
             }
 
@@ -124,14 +84,12 @@ impl Computer {
         output
     }
 
-    fn run_different_a(&self, a: u64) -> u32 {
-        // let mut output = Vec::with_capacity(16);
-
+    fn run_num_out(&self, a: u64) -> u32 {
         let mut output = 0;
 
         let mut register_a = a;
-        let mut register_b = self.register_b;
-        let mut register_c = self.register_c;
+        let mut register_b = 0;
+        let mut register_c = 0;
 
         let mut ip = 0;
         while ip < self.operations.len() - 1 {
@@ -159,7 +117,7 @@ impl Computer {
                 4 => register_b ^= register_c,
                 5 => {
                     output = (output * 10) + (combo_operand & 7) as u32;
-                },
+                }
                 6 => register_b = register_a / (1 << combo_operand),
                 7 => register_c = register_a / (1 << combo_operand),
                 _ => unreachable!("invalid instruction: {}", instruction),
@@ -172,21 +130,41 @@ impl Computer {
     }
 }
 
-pub fn part_one(input: &str) -> Option<String> {
+pub fn part_one(input: &str) -> Option<u64> {
     let bytes = input.as_bytes();
-    let computer = Computer::parse_from_bytes(bytes);
-
-    let program_output = computer.run();
-    String::from_utf8(program_output).ok()
+    let a = parse_unsigned(bytes, &mut 12);
+    Some(solve_specific_program(a))
 }
 
-fn array_to_num(arr: &[u8]) -> u32 {
-    arr.iter().fold(0, |acc, &n| acc * 10 + n as u32)
+fn array_to_num(arr: &[u8]) -> u64 {
+    arr.iter().fold(0, |acc, &n| (acc * 10) + n as u64)
+}
+
+
+fn solve_specific_program(ras: u64) -> u64 {
+    let mut output = 0;
+
+    let mut ra = ras;
+    let mut rb = ra & 7;
+
+
+    loop {
+        rb ^= 3;
+        rb ^= ra / (1 << rb);
+        rb ^= 3;
+        ra >>= 3;
+
+        output = (output * 10) + (rb & 7);
+        if ra == 0 {
+            return output;
+        }
+        rb = ra & 7;
+    }
 }
 
 pub fn part_two(input: &str) -> Option<u64> {
     let computer = Computer::parse_from_bytes(input.as_bytes());
-    let program_len = computer.operations.len();
+    let program_len = computer.program_length;
 
 
     let mut current_possibilities = (1..8).collect::<Vec<u64>>();
@@ -204,7 +182,7 @@ pub fn part_two(input: &str) -> Option<u64> {
                         }
 
                         let ra = 8 * p + q;
-                        let out = computer.run_different_a(ra);
+                        let out = solve_specific_program(ra);
                         if out == target {
                             return Some(ra);
                         }
