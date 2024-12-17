@@ -130,10 +130,11 @@ impl Computer {
     }
 }
 
-pub fn part_one(input: &str) -> Option<u64> {
+pub fn part_one(input: &str) -> Option<String> {
     let bytes = input.as_bytes();
-    let a = parse_unsigned(bytes, &mut 12);
-    Some(solve_specific_program(a))
+    let computer = Computer::parse_from_bytes(bytes);
+    let output = computer.run();
+    String::from_utf8(output).ok()
 }
 
 fn array_to_num(arr: &[u8]) -> u64 {
@@ -141,24 +142,36 @@ fn array_to_num(arr: &[u8]) -> u64 {
 }
 
 
-fn solve_specific_program(ras: u64) -> u64 {
-    let mut output = 0;
+lazy_static! {
+    pub static ref ONE: u64x8 = u64x8::splat(1);
+    pub static ref THREE: u64x8 = u64x8::splat(3);
+    pub static ref SEVEN: u64x8 = u64x8::splat(7);
+    pub static ref TEN: u64x8 = u64x8::splat(10);
+}
+
+
+fn solve_specific_program(ras: u64x8) -> u64x8 {
+    let mut output = u64x8::splat(0);
 
     let mut ra = ras;
-    let mut rb = ra & 7;
+    let mut rb = u64x8::splat(0);
 
+    let one = *ONE;
+    let three = *THREE;
+    let seven = *SEVEN;
+    let ten = *TEN;
 
     loop {
-        rb ^= 3;
-        rb ^= ra / (1 << rb);
-        rb ^= 3;
-        ra >>= 3;
+        rb = ra & seven;
+        rb ^= three;
+        rb ^= ra / (one << rb);
+        rb ^= three;
+        ra >>= three;
 
-        output = (output * 10) + (rb & 7);
-        if ra == 0 {
+        output = (output * ten) + (rb & seven);
+        if ra[0] == 0 {
             return output;
         }
-        rb = ra & 7;
     }
 }
 
@@ -166,36 +179,40 @@ pub fn part_two(input: &str) -> Option<u64> {
     let computer = Computer::parse_from_bytes(input.as_bytes());
     let program_len = computer.program_length;
 
+    let offsets = u64x8::from_array([0, 1, 2, 3, 4, 5, 6, 7]);
 
-    let mut current_possibilities = (1..8).collect::<Vec<u64>>();
+    unsafe {
+        // Start with initial possibilities as a vector.
+        let mut current_possibilities = offsets.as_array().to_vec();
+        let mut next_possibilities = Vec::with_capacity(64); // Preallocate enough space for next possibilities.
 
-    for i in 1..program_len {
-        let target = array_to_num(&computer.operations[program_len - (i + 1)..]);
+        for i in 1..program_len {
+            let target = u64x8::splat(array_to_num(&computer.operations[program_len - (i + 1)..program_len]));
+            next_possibilities.clear(); // Clear the next_possibilities vector before reuse.
 
-        current_possibilities = current_possibilities
-            .iter()
-            .flat_map(|&p| {
-                (0..8)
-                    .filter_map(|q| {
-                        if p == 0 {
-                            return None; // Skip when p == 0
-                        }
+            // SIMD processing for current possibilities.
+            for &p in &current_possibilities {
+                let ra = u64x8::splat(8 * p) + offsets;
+                let out = solve_specific_program(ra);
+                let mask = out.simd_eq(target);
 
-                        let ra = 8 * p + q;
-                        let out = solve_specific_program(ra);
-                        if out == target {
-                            return Some(ra);
-                        }
+                // Inline SIMD mask to extract valid indices directly.
+                let valid = mask.to_bitmask(); // Bitmask for valid indices (1 bit per element).
+                let mut j = valid;
+                while j != 0 {
+                    let idx = j.trailing_zeros() as usize;
+                    next_possibilities.push(*ra.index(idx)); // Fast access without bounds check.
+                    j &= j - 1; // Clear the least significant set bit.
+                }
+            }
 
-                        return None;
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .collect();
+            // Swap current and next buffers (avoid reallocating).
+            std::mem::swap(&mut current_possibilities, &mut next_possibilities);
+        }
+
+        // Return the last valid possibility, if any.
+        current_possibilities.last().copied()
     }
-
-    // If we get here, we didn't find an exact match, return the last possible value
-    current_possibilities.last().copied()
 }
 
 // 108107566389757
