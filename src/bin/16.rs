@@ -84,8 +84,6 @@ fn part_one(input: &str) -> Option<isize> {
 
 fn part_two(input: &str) -> Option<usize> {
     let map = parse_input(input);
-
-
     let (goal, arrival_dir, _, preds) = find_path(&map)?;
 
     let mut visited = FxHashSet::default();
