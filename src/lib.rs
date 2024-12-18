@@ -1,5 +1,6 @@
 use std::ops::{Add, Div, DivAssign, Mul, Rem};
 
+
 pub mod template;
 
 // Use this file to add helper functions and additional modules.
@@ -119,6 +120,16 @@ impl Direction {
             _ => (0, 0)
         }
     }
+
+    pub fn offset(&self, width: usize) -> i32 {
+        match self {
+            Direction::North => -(width as i32),
+            Direction::East => 1,
+            Direction::South => width as i32,
+            Direction::West => -1,
+            _ => 0
+        }
+    }
 }
 
 pub fn divide_range(start: i64, end: i64, n: i64) -> Vec<(i64, i64)> {
@@ -167,3 +178,9 @@ pub trait Digits<T: From<u64>> {
 }
 
 impl Digits<u64> for u64 {}
+
+
+#[inline(always)]
+pub fn euclidean_distance(a: (u32, u32), b: (u32, u32)) -> u32 {
+    ((a.0 as i32 - b.0 as i32).pow(2) + (a.1 as i32 - b.1 as i32).pow(2)) as u32
+}

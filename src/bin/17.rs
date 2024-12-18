@@ -83,51 +83,6 @@ impl Computer {
         output.pop();
         output
     }
-
-    fn run_num_out(&self, a: u64) -> u32 {
-        let mut output = 0;
-
-        let mut register_a = a;
-        let mut register_b = 0;
-        let mut register_c = 0;
-
-        let mut ip = 0;
-        while ip < self.operations.len() - 1 {
-            let instruction = self.operations[ip];
-            let combo_operand = self.operations[ip + 1];
-
-            let combo_operand = match combo_operand {
-                0..=3 => combo_operand as u64,
-                4 => register_a,
-                5 => register_b,
-                6 => register_c,
-                _ => unreachable!("invalid combo operand: {}", combo_operand),
-            };
-
-            match instruction {
-                0 => register_a /= 1 << combo_operand,
-                1 => register_b ^= combo_operand,
-                2 => register_b = combo_operand & 7,
-                3 => {
-                    if register_a != 0 {
-                        ip = combo_operand as usize;
-                        continue;
-                    }
-                }
-                4 => register_b ^= register_c,
-                5 => {
-                    output = (output * 10) + (combo_operand & 7) as u32;
-                }
-                6 => register_b = register_a / (1 << combo_operand),
-                7 => register_c = register_a / (1 << combo_operand),
-                _ => unreachable!("invalid instruction: {}", instruction),
-            }
-
-            ip += 2;
-        }
-
-        output
-    }
 }
 
 pub fn part_one(input: &str) -> Option<String> {
