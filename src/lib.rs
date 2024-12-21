@@ -1,3 +1,4 @@
+use std::hash::Hash;
 use std::ops::{Add, Div, DivAssign, Mul, Rem};
 
 
@@ -183,4 +184,108 @@ impl Digits<u64> for u64 {}
 #[inline(always)]
 pub fn euclidean_distance(a: (u32, u32), b: (u32, u32)) -> u32 {
     ((a.0 as i32 - b.0 as i32).pow(2) + (a.1 as i32 - b.1 as i32).pow(2)) as u32
+}
+
+
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
+pub struct Grid {
+    pub width: u32,
+    pub height: u32,
+    pub grid: Vec<bool>,
+}
+
+pub const ALL_DIRECTIONS: [Direction; 4] = [
+    Direction::North,
+    Direction::East,
+    Direction::South,
+    Direction::West,
+];
+
+impl Grid {
+    pub fn new(width: u32, height: u32, obstacle_locations: &[(u32, u32)]) -> Self {
+        let mut grid = Self {
+            width,
+            height,
+            grid: vec![false; (width * height) as usize],
+        };
+
+        obstacle_locations.iter().for_each(|(x, y)| {
+            let offset = grid.convert_offset(*x, *y);
+            grid.grid[offset] = true;
+        });
+
+        grid
+    }
+
+    pub fn next_moves(&self, x: u32, y: u32) -> Vec<(u32, u32)> {
+        ALL_DIRECTIONS
+            .iter()
+            .filter_map(|dir| {
+                let new_pos = (x as i32 + dir.delta().0, y as i32 + dir.delta().1);
+
+                if new_pos.0 < 0
+                    || new_pos.0 >= self.width as i32
+                    || new_pos.1 < 0
+                    || new_pos.1 >= self.height as i32
+                {
+                    return None;
+                }
+
+                let new_offset = self.convert_offset(new_pos.0 as u32, new_pos.1 as u32);
+                if self.grid[new_offset] {
+                    return None;
+                }
+
+                Some((new_pos.0 as u32, new_pos.1 as u32))
+            })
+            .collect::<Vec<_>>()
+    }
+
+    pub fn next_moves_equal_weight(&self, x: u32, y: u32, weight: u32) -> Vec<((u32, u32), u32)> {
+        ALL_DIRECTIONS
+            .iter()
+            .filter_map(|dir| {
+                let new_pos = (x as i32 + dir.delta().0, y as i32 + dir.delta().1);
+
+                if new_pos.0 < 0
+                    || new_pos.0 >= self.width as i32
+                    || new_pos.1 < 0
+                    || new_pos.1 >= self.height as i32
+                {
+                    return None;
+                }
+
+                let new_offset = self.convert_offset(new_pos.0 as u32, new_pos.1 as u32);
+                if self.grid[new_offset] {
+                    return None;
+                }
+
+                Some(((new_pos.0 as u32, new_pos.1 as u32), weight))
+            })
+            .collect::<Vec<_>>()
+    }
+
+
+    pub fn convert_offset(&self, x: u32, y: u32) -> usize {
+        (y * (self.width) + x) as usize
+    }
+
+    pub fn insert(&mut self, x: u32, y: u32) {
+        let offset = self.convert_offset(x, y);
+        self.grid[offset] = true;
+    }
+
+    pub fn print(&self) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                print!("{}", if self.grid[self.convert_offset(x, y)] { '#' } else { '.' });
+            }
+            println!();
+        }
+    }
+
+}
+
+pub fn manhatten_distance(a: &(u32, u32), b: &(u32, u32)) -> usize {
+    ((a.0 as i32 - b.0 as i32).abs() + (a.1 as i32 - b.1 as i32).abs()) as usize
 }
